@@ -61,8 +61,8 @@ func run() error {
 		return errors.New("-folder must be non empty")
 	}
 
-	ts, err := promptText("provide date and time (yyyy-MM-dd hh:mm)", time.Now().Format("2006-02-01 15:04"), func(i string) error {
-		_, err := time.Parse("2006-02-01 15:04", i)
+	ts, err := promptText("provide date and time (yyyy-MM-dd hh:mm)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
+		_, err := time.Parse("2006-01-02 15:04", i)
 		return err
 	})
 	if err != nil {
@@ -76,7 +76,7 @@ func run() error {
 
 	log.Printf("trying to create meeting with [%s] on [%s]", title, ts)
 
-	t, err := time.Parse("2006-02-01 15:04", ts)
+	t, err := time.Parse("2006-01-02 15:04", ts)
 	if err != nil {
 		return err
 	}
