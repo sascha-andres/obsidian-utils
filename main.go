@@ -20,7 +20,7 @@ var (
 	noDatePrefix bool
 )
 
-// init initializes the package by setting up flag options, log flags and prefix.
+// init initializes the package by setting up flag options, log flags, and prefix.
 func init() {
 	flag.SetEnvPrefix("OBS_AM")
 	flag.StringVar(&folder, "folder", "", "where to store the new meeting")
@@ -48,7 +48,8 @@ func main() {
 // The "title" input is obtained from the user through a prompt.
 //
 // The "createFileName" function is used to determine the filename for the meeting note.
-// It applies specified replacements to the title and prefixes the file with the appointment date if "noDatePrefix" flag is not set.
+// It applies specified replacements to the title and prefixes the file with the appointment date if the "noDatePrefix"
+// flag is not set.
 //
 // The "createContent" function generates the content for the meeting note using a template.
 // The template data includes the current time, the appointment date, and the title.
@@ -104,7 +105,7 @@ func createContent(title string, appointment time.Time) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	td := TemplateData{time.Now().Format(time.RFC850), appointment.Format(time.RFC3339), title}
+	td := TemplateData{time.Now().Format(time.RFC850), appointment.Format(time.RFC3339), title, appointment.Format("2006-01-02")}
 	var tpl bytes.Buffer
 	err = tmpl.Execute(&tpl, td)
 	return tpl.String(), err
@@ -124,6 +125,9 @@ type TemplateData struct {
 	// Title represents the title of a meeting. It is a field in the TemplateData struct,
 	// which is used to generate the content of a meeting note by executing a template.
 	Title string
+
+	// DayNote is a field of struct type TemplateData. It represents a string used to link to the daily note
+	DayNote string
 }
 
 // The `meetingTemplate` constant is a string that represents a template for generating meeting notes.
@@ -141,6 +145,8 @@ aliases:
 date: {{ .Appointment }}
 title: {{ .Title }}
 ---
+
+[[{{ .DayNote }}]]
 
 # Meeting
 
