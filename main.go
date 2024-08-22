@@ -62,7 +62,7 @@ func run() error {
 		return errors.New("-folder must be non empty")
 	}
 
-	ts, err := promptText("provide date and time (yyyy-MM-dd hh:mm)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
+	ts, err := promptText("provide date and time (2006-01-02 15:04)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
 		_, err := time.Parse("2006-01-02 15:04", i)
 		return err
 	})
@@ -70,7 +70,12 @@ func run() error {
 		return err
 	}
 
-	title, err := promptText("get title", "provide title", nil) // TODO aee validation
+	title, err := promptText("get title", "", func(s string) error {
+		if strings.TrimSpace(s) == "" {
+			return errors.New("empty title")
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}
