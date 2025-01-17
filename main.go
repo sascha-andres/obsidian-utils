@@ -17,6 +17,9 @@ import (
 
 var (
 	folder       string
+	recurring    bool
+	interval     string
+	times        int
 	noDatePrefix bool
 )
 
@@ -25,6 +28,9 @@ func init() {
 	flag.SetEnvPrefix("OBS_AM")
 	flag.StringVar(&folder, "folder", "", "where to store the new meeting")
 	flag.BoolVar(&noDatePrefix, "no-date-prefix", false, "pass to not add yyyy-mm-dd prefix to filename")
+	flag.BoolVar(&recurring, "recurring", false, "pass to create recurring meeting notes")
+	flag.StringVar(&interval, "interval", "daily", "pass interval size (daily/weekly)")
+	flag.IntVar(&times, "times", 1, "pass number of times to create meeting notes")
 
 	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
 	log.SetPrefix("[OBS_AM] ")
@@ -62,6 +68,21 @@ func run() error {
 		return errors.New("-folder must be non empty")
 	}
 
+	if recurring {
+		if interval != "daily" && interval != "weekly" {
+			return errors.New("invalid interval")
+		}
+		if times < 1 {
+			return errors.New("invalid times")
+		}
+		if times == 1 {
+			recurring = false
+		}
+	} else {
+		times = 1
+		interval = "daily"
+	}
+
 	ts, err := promptText("provide date and time (2006-01-02 15:04)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
 		_, err := time.Parse("2006-01-02 15:04", i)
 		return err
@@ -80,22 +101,35 @@ func run() error {
 		return err
 	}
 
-	log.Printf("trying to create meeting with [%s] on [%s]", title, ts)
-
 	t, err := time.Parse("2006-01-02 15:04", ts)
 	if err != nil {
 		return err
 	}
 
-	fullName := createFileName(title, t)
+	for i := 0; i < times; i++ {
+		if i > 0 {
+			if interval == "daily" {
+				t = t.Add(time.Hour * 24)
+			}
+			if interval == "weekly" {
+				t = t.Add(time.Hour * 168)
+			}
+		}
+		log.Printf("trying to create meeting with [%s] on [%s]", title, t)
 
-	c, err := createContent(title, t)
-	if err != nil {
-		return err
+		fullName := createFileName(title, t)
+
+		c, err := createContent(title, t)
+		if err != nil {
+			return err
+		}
+
+		if err = os.WriteFile(fullName, []byte(c), 0600); err != nil {
+			return err
+		}
 	}
 
-	err = os.WriteFile(fullName, []byte(c), 0600)
-	return err
+	return nil
 }
 
 // createContent generates the content for a meeting note using a template.
