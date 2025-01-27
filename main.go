@@ -29,7 +29,7 @@ func init() {
 	flag.StringVar(&folder, "folder", "", "where to store the new meeting")
 	flag.BoolVar(&noDatePrefix, "no-date-prefix", false, "pass to not add yyyy-mm-dd prefix to filename")
 	flag.BoolVar(&recurring, "recurring", false, "pass to create recurring meeting notes")
-	flag.StringVar(&interval, "interval", "daily", "pass interval size (daily/weekly)")
+	flag.StringVar(&interval, "interval", "daily", "pass interval size (daily/weekly/bi-weekly)")
 	flag.IntVar(&times, "times", 1, "pass number of times to create meeting notes")
 
 	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
@@ -69,7 +69,7 @@ func run() error {
 	}
 
 	if recurring {
-		if interval != "daily" && interval != "weekly" {
+		if interval != "daily" && interval != "weekly" && interval != "bi-weekly" {
 			return errors.New("invalid interval")
 		}
 		if times < 1 {
@@ -113,6 +113,9 @@ func run() error {
 			}
 			if interval == "weekly" {
 				t = t.Add(time.Hour * 168)
+			}
+			if interval == "bi-weekly" {
+				t = t.Add(time.Hour * 336)
 			}
 		}
 		log.Printf("trying to create meeting with [%s] on [%s]", title, t)
