@@ -16,9 +16,9 @@ import (
 )
 
 var (
-	folder, interval        string
-	recurring, noDatePrefix bool
-	times                   int
+	folder, interval                     string
+	recurring, noDatePrefix, printConfig bool
+	times                                int
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
@@ -29,6 +29,7 @@ func init() {
 	flag.BoolVar(&recurring, "recurring", false, "pass to create recurring meeting notes")
 	flag.StringVar(&interval, "interval", "daily", "pass interval size (daily/weekly/bi-weekly)")
 	flag.IntVar(&times, "times", 1, "pass number of times to create meeting notes")
+	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
 
 	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
 	log.SetPrefix("[OBS_AM] ")
@@ -79,6 +80,15 @@ func run() error {
 	} else {
 		times = 1
 		interval = "daily"
+	}
+
+	if printConfig {
+		log.Println(fmt.Sprintf("meeting notes folder: %q", folder))
+		log.Println(fmt.Sprintf("interval: %q", interval))
+		log.Println(fmt.Sprintf("recurring: %t", recurring))
+		log.Println(fmt.Sprintf("noDatePrefix: %t", noDatePrefix))
+		log.Println(fmt.Sprintf("times: %d", times))
+		return nil
 	}
 
 	ts, err := promptText("provide date and time (2006-01-02 15:04)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
