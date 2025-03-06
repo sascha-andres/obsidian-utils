@@ -16,11 +16,9 @@ import (
 )
 
 var (
-	folder       string
-	recurring    bool
-	interval     string
-	times        int
-	noDatePrefix bool
+	folder, interval        string
+	recurring, noDatePrefix bool
+	times                   int
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
