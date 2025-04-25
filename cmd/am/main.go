@@ -16,15 +16,16 @@ import (
 )
 
 var (
-	folder, interval                     string
+	folder, interval, meetingFolder      string
 	recurring, noDatePrefix, printConfig bool
 	times                                int
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
 func init() {
-	flag.SetEnvPrefix("OBS_AM")
-	flag.StringVar(&folder, "folder", "", "where to store the new meeting")
+	flag.SetEnvPrefix("OBS_UTIL")
+	flag.StringVar(&folder, "folder", "", "base path of obsidian vault")
+	flag.StringVar(&meetingFolder, "meeting-folder", "", "where to store the meeting notes")
 	flag.BoolVar(&noDatePrefix, "no-date-prefix", false, "pass to not add yyyy-mm-dd prefix to filename")
 	flag.BoolVar(&recurring, "recurring", false, "pass to create recurring meeting notes")
 	flag.StringVar(&interval, "interval", "daily", "pass interval size (daily/weekly/bi-weekly)")
@@ -32,7 +33,7 @@ func init() {
 	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
 
 	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
-	log.SetPrefix("[OBS_AM] ")
+	log.SetPrefix("[OBS_UTIL_AM] ")
 }
 
 // main is the entry point of the program.
@@ -66,6 +67,11 @@ func run() error {
 	if folder == "" {
 		return errors.New("-folder must be non empty")
 	}
+	if meetingFolder == "" {
+		return errors.New("-meeting-folder must be non empty")
+	}
+
+	folder = path.Join(folder, meetingFolder)
 
 	if recurring {
 		if interval != "daily" && interval != "weekly" && interval != "bi-weekly" {
@@ -90,6 +96,8 @@ func run() error {
 		log.Println(fmt.Sprintf("times: %d", times))
 		return nil
 	}
+
+	_ = os.MkdirAll(folder, 0700)
 
 	ts, err := promptText("provide date and time (2006-01-02 15:04)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
 		_, err := time.Parse("2006-01-02 15:04", i)
