@@ -16,36 +16,36 @@ alcohol: false
 beef: false
 chicken: false
 coffein: false
-date: "{{date:YYYY-MM-DD}}"
+date: "{{ .Current.DateOnly }}"
 diarrhea: false
 fruit: false
 headache: false
-month: "[[00-09 Personal/00 Daily Notes/{{date:YYYY}}/{{date:MM}}/00 Index|{{date:MM}}]]"
+month: "[[{{ .DailyNoteFolder }}/{{ .Current.Year }}/{{ .Current.Month }}/00 Index|{{ .Current.Month }}]]"
 significant: false
 vegetables: false
-year: "[[00-09 Personal/00 Daily Notes/{{date:YYYY}}/00 Index|{{date:YYYY}}]]"
+year: "[[{{ .DailyNoteFolder }}/{{ .Current.Year }}/00 Index|{{ .Current.Year }}]]"
 watch charged: false
 work time: 0
 work location: Home
 weight: 0
 ---
 
-<% tp.user.generate_periodic_link_markdown(tp, "D") %>
+<< [[{{ .Previous.DateOnly }}|Previous]] | [[00 Index|Index]] | [[{{ .Next.DateOnly }}|Next]] >>
 
 # Daily Log
 
 ## Table of contents
 
-- [[{{date:YYYY-MM-DD}}#Today's meetings|Today's meetings]]
-- [[{{date:YYYY-MM-DD}}#Today's birthdays|Today's birthdays]]
-- [[{{date:YYYY-MM-DD}}#Work|Work]]
-- [[{{date:YYYY-MM-DD}}#Health|Health]]
-	- [[{{date:YYYY-MM-DD}}#Food & beverages|Food & beverages]]
-		- [[{{date:YYYY-MM-DD}}#Beverages|Beverages]]
-		- [[{{date:YYYY-MM-DD}}#Food|Food]]
-- [[{{date:YYYY-MM-DD}}#Other stuff|Other stuff]]
-- [[{{date:YYYY-MM-DD}}#Tasks|Tasks]]
-- [[{{date:YYYY-MM-DD}}#New Items Created|New Items created]]
+- [[{{ .Current.DateOnly }}#Today's meetings|Today's meetings]]
+- [[{{ .Current.DateOnly }}#Today's birthdays|Today's birthdays]]
+- [[{{ .Current.DateOnly }}#Work|Work]]
+- [[{{ .Current.DateOnly }}#Health|Health]]
+	- [[{{ .Current.DateOnly }}#Food & beverages|Food & beverages]]
+		- [[{{ .Current.DateOnly }}#Beverages|Beverages]]
+		- [[{{ .Current.DateOnly }}#Food|Food]]
+- [[{{ .Current.DateOnly }}#Other stuff|Other stuff]]
+- [[{{ .Current.DateOnly }}#Tasks|Tasks]]
+- [[{{ .Current.DateOnly }}#New Items Created|New Items created]]
 
 ## Today's meetings
 
@@ -64,7 +64,7 @@ SORT dateformat(date(date), "HH:mm") ASC
 TABLE
 birthday
 FROM #contact
-where birthday and dateformat(date(birthday), "MM-dd") = "{{date:MM-DD}}"
+where birthday and dateformat(date(birthday), "MM-dd") = "{{ .Current.Month }}-{{ .Current.Day }}"
 ```
 
 ## Work
@@ -103,7 +103,7 @@ starts before tomorrow
 group by function task.tags.length?task.tags.map((tag)=>(tag=="#task/todo"?"Me":(tag=="#task/work"?"Work":(tag=="#task/DMREG"?"Work":(tag=="#task/comm"?"Me":(tag=="#task/it"?"Work":(tag=="#task/bug"?"Dev":(tag=="#task/stream"?"Watched":(tag=="task/shopping"?"Buy":(tag=="#task/carmen"?"Carmen":(tag=="#task/dev"?"Dev":"Me"))))))))))):"Me"
 hide tags
 sort by urgency
-done "{{date:YYYY-MM-DD}}"
+done "{{ .Current.DateOnly }}"
 ```
 
 ## New or changed items

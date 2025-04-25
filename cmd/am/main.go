@@ -97,6 +97,8 @@ func run() error {
 		return nil
 	}
 
+	_ = os.MkdirAll(folder, 0700)
+
 	ts, err := promptText("provide date and time (2006-01-02 15:04)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
 		_, err := time.Parse("2006-01-02 15:04", i)
 		return err
