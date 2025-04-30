@@ -13,6 +13,8 @@ import (
 
 	"github.com/manifoldco/promptui"
 	"github.com/sascha-andres/reuse/flag"
+
+	obsidianutils "github.com/sascha-andres/absidian-utils"
 )
 
 var (
@@ -23,7 +25,8 @@ var (
 
 // init initializes the package by setting up flag options, log flags, and prefix.
 func init() {
-	flag.SetEnvPrefix("OBS_UTIL")
+	obsidianutils.AddCommonFlagPrefixes()
+	flag.SetEnvPrefix("OBS_UTIL_AM")
 	flag.StringVar(&folder, "folder", "", "base path of obsidian vault")
 	flag.StringVar(&meetingFolder, "meeting-folder", "", "where to store the meeting notes")
 	flag.BoolVar(&noDatePrefix, "no-date-prefix", false, "pass to not add yyyy-mm-dd prefix to filename")
@@ -31,7 +34,6 @@ func init() {
 	flag.StringVar(&interval, "interval", "daily", "pass interval size (daily/weekly/bi-weekly)")
 	flag.IntVar(&times, "times", 1, "pass number of times to create meeting notes")
 	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
-
 	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
 	log.SetPrefix("[OBS_UTIL_AM] ")
 }
@@ -66,6 +68,10 @@ func run() error {
 	log.Print("start creating a meeting note")
 	if folder == "" {
 		return errors.New("-folder must be non empty")
+	}
+	folder, err := obsidianutils.ApplyDirectoryPlaceHolder(folder)
+	if err != nil {
+		return err
 	}
 	if meetingFolder == "" {
 		return errors.New("-meeting-folder must be non empty")

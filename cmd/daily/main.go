@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/sascha-andres/reuse/flag"
+
+	obsidianutils "github.com/sascha-andres/absidian-utils"
 )
 
 type (
@@ -34,7 +36,7 @@ type (
 
 	// NoteData represents the note-related data for a specific date, including links to previous, next, and current day's data.
 	// Previous is the DayData for the prior day relative to the current date.
-	// Next is the DayData for the subsequent day relative to the current date.
+	// Next is the DayData for the following day relative to the current date.
 	// Current holds the DayData for the current date.
 	// DailyNoteFolder specifies the directory path for storing daily notes.
 	NoteData struct {
@@ -42,14 +44,14 @@ type (
 		// Previous represents the DayData for the prior day relative to the current date.
 		Previous DayData
 
-		// Next represents the DayData for the subsequent day relative to the current date.
+		// Next represents the DayData for the following day relative to the current date.
 		Next DayData
 
 		// Current holds the DayData for the current date.
 		Current DayData
 
 		// DailyNoteFolder defines the path or location where daily notes are stored as a string.
-		// wqhich is basically the -daily-folder parameter
+		// which is basically the -daily-folder parameter
 		DailyNoteFolder string
 	}
 )
@@ -64,14 +66,14 @@ var defaultTemplateFile string
 
 // init initializes the package by setting up flag options, log flags, and prefix.
 func init() {
-	flag.SetEnvPrefix("OBS_UTIL")
-	flag.StringVar(&folder, "folder", "", "base path to obsidian valut")
+	obsidianutils.AddCommonFlagPrefixes()
+	flag.SetEnvPrefix("OBS_UTIL_DAILY")
+	flag.StringVar(&folder, "folder", "", "base path to obsidian vault")
 	flag.StringVar(&dailyFolder, "daily-folder", "", "where to store the daily note inside the vault")
 	flag.StringVar(&templateFile, "template-file", "", "path to template file")
 	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
 	flag.BoolVar(&overwrite, "overwrite", false, "overwrite existing file")
 	flag.StringVar(&forDate, "for-date", time.Now().Format(time.DateOnly), "date for which to create the daily note (2006-01-02)")
-
 	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
 	log.SetPrefix("[OBS_UTIL_DAILY] ")
 }
@@ -90,6 +92,10 @@ func run() error {
 
 	if folder == "" {
 		return errors.New("-folder must be non empty")
+	}
+	folder, err := obsidianutils.ApplyDirectoryPlaceHolder(folder)
+	if err != nil {
+		return err
 	}
 	if dailyFolder == "" {
 		return errors.New("-daily-folder must be non empty")
@@ -111,10 +117,10 @@ func run() error {
 		return err
 	}
 
-	resultiungDirectory := path.Join(folder, t.Format("2006/01"))
+	resultingDirectory := path.Join(folder, t.Format("2006/01"))
 	resultingFile := path.Join(folder, fmt.Sprintf("%s.md", t.Format("2006/01/2006-01-02")))
 
-	_ = os.MkdirAll(resultiungDirectory, 0700)
+	_ = os.MkdirAll(resultingDirectory, 0700)
 
 	if overwrite {
 		log.Printf("overwriting existing file %q", resultingFile)

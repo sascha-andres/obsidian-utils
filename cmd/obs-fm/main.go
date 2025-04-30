@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"path"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/sascha-andres/reuse/flag"
@@ -14,24 +14,21 @@ import (
 )
 
 var (
-	key, value, dailyFolder    string
-	notePath, noteType, folder string
-	printConfig                bool
+	key, value, dailyFolder               string
+	notePath, noteType, folder, valueType string
+	printConfig                           bool
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
 func init() {
-	flag.SetEnvPrefix("OBS_UTIL")
-	flag.SetEnvPrefixForFlag("note-path", "OBS_UTIL_FM")
-	flag.SetEnvPrefixForFlag("note-type", "OBS_UTIL_FM")
-	flag.SetEnvPrefixForFlag("key", "OBS_UTIL_FM")
-	flag.SetEnvPrefixForFlag("value", "OBS_UTIL_FM")
-	// TODO commonly used flags in utilities should be declared in a shared func
+	obsidianutils.AddCommonFlagPrefixes()
+	flag.SetEnvPrefix("OBS_UTIL_FM")
 	flag.StringVar(&dailyFolder, "daily-folder", "", "where to store the daily note inside the vault")
 	flag.StringVar(&folder, "folder", "", "base path to obsidian vault")
 	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
 	flag.StringVar(&notePath, "note-path", "", "path to note")
 	flag.StringVar(&noteType, "note-type", "", "type of note")
+	flag.StringVar(&valueType, "value-type", "string", "type of value")
 	flag.StringVar(&key, "key", "", "key")
 	flag.StringVar(&value, "value", "", "value")
 
@@ -56,11 +53,10 @@ func run() error {
 	if folder == "" {
 		return errors.New("-folder must be non empty")
 	}
-	currentDir, err := os.Getwd()
+	folder, err = obsidianutils.ApplyDirectoryPlaceHolder(folder)
 	if err != nil {
 		return err
 	}
-	folder = strings.Replace(folder, "$$PWD$$", currentDir, -1)
 	if noteType == "daily" {
 		if dailyFolder == "" {
 			return errors.New("-daily-folder must be non empty if note-type is daily")
@@ -84,7 +80,26 @@ func run() error {
 	completePath := path.Join(folder, dailyFolder, dailyTimestamp.Format("2006/01"), dailyTimestamp.Format("2006-01-02")+".md")
 	log.Printf("working on: %q", completePath)
 	processor := obsidianutils.NewSimpleFrontmatterProcessor(completePath)
-	err = processor.SetValue(key, value)
+	switch valueType {
+	case "int":
+		intValue, err := strconv.Atoi(value)
+		if err != nil {
+			log.Printf("could not convert %q to int", value)
+			return err
+		}
+		err = processor.SetValue(key, intValue)
+		break
+	case "float":
+		floatValue, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			log.Printf("could not convert %q to float", value)
+			return err
+		}
+		err = processor.SetValue(key, floatValue)
+		break
+	default:
+		err = processor.SetValue(key, value)
+	}
 	if err != nil {
 		return err
 	}
