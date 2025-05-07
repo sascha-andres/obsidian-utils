@@ -1,35 +1,37 @@
-# Add a meeting note
-Adds a meeting note to specified folder
+# Obsidian Utils
 
-# Configure
+This repository contains a collection of utilities for working with [Obsidian](https://obsidian.md/), a powerful knowledge base that works on top of a local folder of plain text Markdown files.
 
-Each flag has an env variable prefixed with OBS_AM_. The env variable
-contains uppercase letters and underscores instead of minus.
+## Purpose
 
-## Folder
+The purpose of this repository is to provide command-line utilities that enhance the Obsidian experience by automating common tasks and extending Obsidian's functionality. These utilities are designed to be simple, focused, and easy to use.
 
-Flag `-folder` specifies the folder path to store generated MD file(s)
+## Utilities
 
-## No date prefix
+### [Appointment Manager (am)](cmd/am/README.md)
 
-Flag `-no-date-prefix` instructs obsidian am to not add a YYYYMMDD prefix to the filename
+The Appointment Manager utility creates meeting notes in Obsidian with a specific template. It allows you to create meeting notes with a predefined template and supports recurring meetings with different intervals.
 
-## Recurring
+### [Daily Note Creator (daily)](cmd/daily/README.md)
 
-To create a recurring event use the `-recurring` flag.
+The Daily Note Creator utility creates daily notes in Obsidian with a specific template. It creates markdown files with a predefined template that includes links to previous and next day notes, as well as various sections for tracking activities, health metrics, tasks, and more.
 
-## Interval
+### [Google Contacts Exporter (ggl)](cmd/ggl/README.md)
 
-For a recurring event `-interval` specifies the recurring interval. Valid values are:
+The Google Contacts Exporter utility exports Google contacts and contact groups to JSON files. It uses OAuth2 authentication to access your Google account and the Google People API to retrieve your contacts and contact groups.
 
-- daily
-- weekly
-- bi-weekly
+### [Obsidian Frontmatter Editor (obs-fm)](cmd/obs-fm/README.md)
 
-## Times
+The Obsidian Frontmatter Editor utility modifies frontmatter in Obsidian notes. It can set string, integer, or float values for specified keys in the frontmatter, which is useful for scripting or automating changes to note metadata.
 
-The `-times` flag instructs obsidian-am to create n times the event with respect to interval given.
+## Installation
 
-## Config
+Each utility can be installed separately. Please refer to the individual README files for installation instructions.
 
-To print the config used the `-print-config` flag
+## Usage
+
+Please refer to the individual README files for usage instructions for each utility.
+
+## License
+
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0) - see the LICENSE file for details. This license allows you to obtain, run, and modify the code, but prohibits using it for commercial purposes (selling it for money with or without changes).
