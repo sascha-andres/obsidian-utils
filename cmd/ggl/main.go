@@ -123,9 +123,9 @@ func initializeStateDirectory() error {
 }
 
 // initializeOutputDirectory ensures the output directory exists, creating it with the correct permissions if it does not exist.
-func initializeOutputDirectory() error {
-	if _, err := os.Stat(outputDirectory); os.IsNotExist(err) {
-		err := os.MkdirAll(outputDirectory, 0750)
+func initializeOutputDirectory(writeTo string) error {
+	if _, err := os.Stat(writeTo); os.IsNotExist(err) {
+		err := os.MkdirAll(writeTo, 0750)
 		if err != nil {
 			return err
 		}
@@ -146,14 +146,13 @@ func main() {
 // It interacts with the Google People API and handles both contacts and contact groups data.
 // Returns an error if any of the steps fail.
 func run() error {
-	var err error
 	ctx := context.Background()
 
-	outputDirectory, err = obsidianutils.ApplyDirectoryPlaceHolder(outputDirectory)
+	writeTo, err := obsidianutils.ApplyDirectoryPlaceHolder(outputDirectory)
 	if err != nil {
 		return err
 	}
-	err = initializeEnvironment()
+	err = initializeEnvironment(writeTo)
 	if err != nil {
 		return err
 	}
@@ -162,7 +161,7 @@ func run() error {
 		return err
 	}
 	if printToConsole == "" || printToConsole == "contacts" {
-		err = handleContacts(srv)
+		err = handleContacts(srv, writeTo)
 		if err != nil {
 			return err
 		}
@@ -170,11 +169,11 @@ func run() error {
 	if printToConsole != "" && printToConsole != "groups" {
 		return nil
 	}
-	return handleGroups(srv)
+	return handleGroups(srv, writeTo)
 }
 
 // handleGroups retrieves Google Contact Groups, exporting data as JSON either by printing to the console or saving to a file.
-func handleGroups(srv *people.Service) error {
+func handleGroups(srv *people.Service, writeTo string) error {
 	// List contact groups
 	groups, err := srv.ContactGroups.List().PageSize(1000).Do()
 	if err != nil {
@@ -191,7 +190,7 @@ func handleGroups(srv *people.Service) error {
 		fmt.Println(string(groupsJsonData))
 	} else if printToConsole == "" {
 		// Write groups data to file
-		groupsOutputFile := path.Join(outputDirectory, "groups.json")
+		groupsOutputFile := path.Join(writeTo, "groups.json")
 		err = ioutil.WriteFile(groupsOutputFile, groupsJsonData, 0644)
 		if err != nil {
 			return fmt.Errorf("unable to write groups to file: %w", err)
@@ -206,7 +205,7 @@ func handleGroups(srv *people.Service) error {
 }
 
 // handleContacts retrieves and processes Google Contacts, exporting data to JSON either by printing or saving to a file.
-func handleContacts(srv *people.Service) error {
+func handleContacts(srv *people.Service, writeTo string) error {
 	// List connections (contacts)
 	r, err := srv.People.Connections.List("people/me").
 		PersonFields("names,emailAddresses,phoneNumbers,addresses,organizations,memberships,birthdays").
@@ -226,7 +225,7 @@ func handleContacts(srv *people.Service) error {
 		fmt.Println(string(jsonData))
 	} else if printToConsole == "" {
 		// Write contacts data to file
-		outputFile := path.Join(outputDirectory, "contacts.json")
+		outputFile := path.Join(writeTo, "contacts.json")
 		err = ioutil.WriteFile(outputFile, jsonData, 0644)
 		if err != nil {
 			return fmt.Errorf("unable to write contacts to file: %w", err)
@@ -272,13 +271,13 @@ func initializeGoogleApiClient(err error, ctx context.Context) (*people.Service,
 }
 
 // initializeEnvironment sets up the necessary directories for application state and output, returning an error on failure.
-func initializeEnvironment() error {
+func initializeEnvironment(writeTo string) error {
 	err := initializeStateDirectory()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = initializeOutputDirectory()
+	err = initializeOutputDirectory(writeTo)
 	if err != nil {
 		log.Fatal(err)
 	}
