@@ -13,7 +13,7 @@ import (
 
 	"github.com/sascha-andres/reuse/flag"
 
-	obsidianutils "github.com/sascha-andres/absidian-utils"
+	obsidianutils "github.com/sascha-andres/obsidian-utils"
 )
 
 type (
