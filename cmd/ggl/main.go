@@ -17,6 +17,8 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/api/people/v1"
+
+	obsidianutils "github.com/sascha-andres/obsidian-utils"
 )
 
 // Scopes required for reading contacts and contact groups
@@ -144,8 +146,14 @@ func main() {
 // It interacts with the Google People API and handles both contacts and contact groups data.
 // Returns an error if any of the steps fail.
 func run() error {
+	var err error
 	ctx := context.Background()
-	err := initializeEnvironment()
+
+	outputDirectory, err = obsidianutils.ApplyDirectoryPlaceHolder(outputDirectory)
+	if err != nil {
+		return err
+	}
+	err = initializeEnvironment()
 	if err != nil {
 		return err
 	}
