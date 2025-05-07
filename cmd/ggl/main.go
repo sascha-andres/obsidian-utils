@@ -32,13 +32,13 @@ var (
 // init initializes the program's environment settings and configuration for Google-related utilities.
 // It sets an environment prefix, retrieves the current user, and defines the state directory flag for OAuth2 storage.
 func init() {
-	flag.SetEnvPrefix("OBS_UTIL_GOOGLE")
+	flag.SetEnvPrefix("GGL")
 
 	currentUser, err := user.Current()
 	if err != nil {
 		log.Fatal(err)
 	}
-	flag.StringVar(&stateDirectory, "state-directory", path.Join(currentUser.HomeDir, ".local/share/obs-util-google"), "Directory to store OAuth2 state")
+	flag.StringVar(&stateDirectory, "state-directory", path.Join(currentUser.HomeDir, ".local/state/ggl"), "Directory to store OAuth2 state")
 	flag.StringVar(&outputDirectory, "output-directory", ".", "Directory to store output files")
 	flag.StringVar(&printToConsole, "print-to-console", "", "Print data to console instead of writing to files, may be contacts or groups")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose output")
