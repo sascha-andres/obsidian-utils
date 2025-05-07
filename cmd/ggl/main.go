@@ -8,9 +8,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/user"
 	"path"
 	"path/filepath"
+	"runtime"
 
 	"github.com/sascha-andres/reuse/flag"
 	"golang.org/x/oauth2"
@@ -64,26 +66,102 @@ func getClient(config *oauth2.Config) (*http.Client, error) {
 	return config.Client(context.Background(), tok), nil
 }
 
-// getTokenFromWeb requests a token from the web, then returns the retrieved token
+// openBrowser opens a browser window to the specified URL
+func openBrowser(url string) {
+	var err error
+
+	switch {
+	case len(os.Getenv("BROWSER")) > 0:
+		err = exec.Command(os.Getenv("BROWSER"), url).Start()
+	case os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != "":
+		err = exec.Command("xdg-open", url).Start()
+	case os.Getenv("XDG_SESSION_TYPE") == "wayland":
+		err = exec.Command("xdg-open", url).Start()
+	case runtime.GOOS == "darwin":
+		err = exec.Command("open", url).Start()
+	case runtime.GOOS == "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	default:
+		err = fmt.Errorf("unsupported platform")
+	}
+
+	if err != nil {
+		log.Printf("Error opening browser: %v", err)
+	}
+}
+
+// getTokenFromWeb requests a token from the web by starting a local web server to handle the OAuth callback
 func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
+	// Set up a local web server to receive the callback
+	codeChan := make(chan string)
+	errChan := make(chan error)
+
+	// Create a random port between 8000 and 9000
+	const callbackPath = "/oauth2callback"
+	redirectURL := "http://localhost:8080" + callbackPath
+	config.RedirectURL = redirectURL
+
+	// Set up the server
+	server := &http.Server{Addr: ":8080"}
+
+	// Set up the handler
+	http.HandleFunc(callbackPath, func(w http.ResponseWriter, r *http.Request) {
+		code := r.URL.Query().Get("code")
+		if code == "" {
+			errChan <- fmt.Errorf("no code in callback")
+			http.Error(w, "No code provided", http.StatusBadRequest)
+			return
+		}
+
+		// Display success message to the user
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprintf(w, "<html><body><h1>Authentication Successful</h1><p>You can close this window now.</p></body></html>")
+
+		// Send the code to the channel
+		codeChan <- code
+	})
+
+	// Start the server in a goroutine
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errChan <- err
+		}
+	}()
+
+	// Generate the auth URL
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+
+	// Prompt the user to open the URL
 	fmt.Println("==========================================================")
 	fmt.Println("To authorize this application:")
-	fmt.Println("1. Copy the following URL")
+	fmt.Println("1. A browser window should open automatically.")
+	fmt.Println("   If it doesn't, please open the following URL:")
 	fmt.Printf("   %v\n", authURL)
-	fmt.Println("2. Open the URL in any browser (can be on another device)")
-	fmt.Println("3. Sign in and grant access to your Google account")
-	fmt.Println("4. Copy the authorization code provided")
-	fmt.Println("5. Paste the authorization code below and press Enter")
+	fmt.Println("2. Sign in and grant access to your Google account")
 	fmt.Println("==========================================================")
-	fmt.Print("Enter authorization code: ")
 
-	var authCode string
-	if _, err := fmt.Scan(&authCode); err != nil {
+	// Try to open the browser automatically
+	openBrowser(authURL)
+
+	// Wait for the code or an error
+	var code string
+	select {
+	case code = <-codeChan:
+		// Got the code, continue
+	case err := <-errChan:
+		// Shutdown the server
+		_ = server.Shutdown(context.Background())
 		return nil, err
 	}
 
-	return config.Exchange(context.TODO(), authCode)
+	// Shutdown the server
+	err := server.Shutdown(context.Background())
+	if err != nil {
+		log.Printf("Error shutting down server: %v", err)
+	}
+
+	// Exchange the code for a token
+	return config.Exchange(context.TODO(), code)
 }
 
 // tokenFromFile retrieves a token from a local file
