@@ -3,12 +3,6 @@ date modified: Sunday, September 10th 2023, 8:59:05 am
 tags:
   - daily-note
 type: daily
-systole:
-  - 0
-diastole:
-  - 0
-systole diff: 0
-diastole diff: 0
 liquid: 0
 sleep: 0
 steps: 0
