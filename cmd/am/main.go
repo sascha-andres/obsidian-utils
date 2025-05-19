@@ -18,9 +18,9 @@ import (
 )
 
 var (
-	folder, interval, meetingFolder      string
-	recurring, noDatePrefix, printConfig bool
-	times                                int
+	folder, interval, meetingFolder, dateTime, title string
+	recurring, noDatePrefix, printConfig, dryRun     bool
+	times                                            int
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
@@ -34,6 +34,9 @@ func init() {
 	flag.StringVar(&interval, "interval", "daily", "pass interval size (daily/weekly/bi-weekly)")
 	flag.IntVar(&times, "times", 1, "pass number of times to create meeting notes")
 	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
+	flag.BoolVar(&dryRun, "dry-run", false, "pass to not create files")
+	flag.StringVar(&dateTime, "date-time", "", "pass date and time in format yyyy-mm-dd hh:mm")
+	flag.StringVar(&title, "title", "", "pass title")
 	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
 	log.SetPrefix("[OBS_UTIL_AM] ")
 }
@@ -103,24 +106,45 @@ func run() error {
 		return nil
 	}
 
-	_ = os.MkdirAll(folder, 0700)
-
-	ts, err := promptText("provide date and time (2006-01-02 15:04)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
-		_, err := time.Parse("2006-01-02 15:04", i)
-		return err
-	})
-	if err != nil {
-		return err
+	if !dryRun {
+		err = os.MkdirAll(folder, 0700)
+		if err != nil {
+			if !os.IsExist(err) {
+				return err
+			}
+		}
 	}
 
-	title, err := promptText("get title", "", func(s string) error {
-		if strings.TrimSpace(s) == "" {
-			return errors.New("empty title")
+	var ts string
+	if dateTime != "" {
+		_, err = time.Parse("2006-01-02 15:04", dateTime)
+		if err != nil {
+			return err
 		}
-		return nil
-	})
-	if err != nil {
-		return err
+		ts = dateTime
+	} else {
+		ts, err = promptText("provide date and time (2006-01-02 15:04)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
+			_, err := time.Parse("2006-01-02 15:04", i)
+			return err
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	var localTitle string
+	if title != "" {
+		localTitle = title
+	} else {
+		localTitle, err = promptText("get title", "", func(s string) error {
+			if strings.TrimSpace(s) == "" {
+				return errors.New("empty title")
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	t, err := time.Parse("2006-01-02 15:04", ts)
@@ -140,17 +164,23 @@ func run() error {
 				t = t.Add(time.Hour * 336)
 			}
 		}
-		log.Printf("trying to create meeting with [%s] on [%s]", title, t)
+		log.Printf("trying to create meeting with [%s] on [%s]", localTitle, t)
 
-		fullName := createFileName(title, t)
-
-		c, err := createContent(title, t)
+		fullName, err := createFileName(title, t)
 		if err != nil {
 			return err
 		}
+		if dryRun {
+			log.Printf("would create meeting with [%s] on [%s] in [%s]", localTitle, t, fullName)
+		} else {
+			c, err := createContent(title, t)
+			if err != nil {
+				return err
+			}
 
-		if err = os.WriteFile(fullName, []byte(c), 0600); err != nil {
-			return err
+			if err = os.WriteFile(fullName, []byte(c), 0600); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -231,7 +261,7 @@ var replacements = map[string]string{
 }
 
 // createFileName generates a file name for a meeting note based on the provided title and appointment time. It applies specified character replacements to the title and prefixes the file with the appointment date if the noDatePrefix flag is not set. The generated file name is returned as a string.
-func createFileName(title string, appointment time.Time) string {
+func createFileName(title string, appointment time.Time) (string, error) {
 	fixed := title
 	for k, v := range replacements {
 		fixed = strings.ReplaceAll(fixed, k, v)
@@ -240,7 +270,7 @@ func createFileName(title string, appointment time.Time) string {
 	if !noDatePrefix {
 		fName = fmt.Sprintf("%s %s", appointment.Format("2006-01-02"), fName)
 	}
-	return path.Join(folder, fName)
+	return obsidianutils.ApplyDirectoryPlaceHolder(path.Join(folder, fName))
 }
 
 // promptText runs a textual prompt
