@@ -166,14 +166,14 @@ func run() error {
 		}
 		log.Printf("trying to create meeting with [%s] on [%s]", localTitle, t)
 
-		fullName, err := createFileName(folder, title, t)
+		fullName, err := createFileName(folder, localTitle, t)
 		if err != nil {
 			return err
 		}
 		if dryRun {
 			log.Printf("would create meeting with [%s] on [%s] in [%s]", localTitle, t, fullName)
 		} else {
-			c, err := createContent(title, t)
+			c, err := createContent(localTitle, t)
 			if err != nil {
 				return err
 			}
@@ -261,8 +261,8 @@ var replacements = map[string]string{
 }
 
 // createFileName generates a file name for a meeting note based on the provided title and appointment time. It applies specified character replacements to the title and prefixes the file with the appointment date if the noDatePrefix flag is not set. The generated file name is returned as a string.
-func createFileName(folder, title string, appointment time.Time) (string, error) {
-	fixed := title
+func createFileName(folder, localTitle string, appointment time.Time) (string, error) {
+	fixed := localTitle
 	for k, v := range replacements {
 		fixed = strings.ReplaceAll(fixed, k, v)
 	}
