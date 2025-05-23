@@ -166,7 +166,7 @@ func run() error {
 		}
 		log.Printf("trying to create meeting with [%s] on [%s]", localTitle, t)
 
-		fullName, err := createFileName(folder, localTitle, t)
+		fullName, err := obsidianutils.CreateFileName(folder, localTitle, noDatePrefix, t)
 		if err != nil {
 			return err
 		}
@@ -189,11 +189,6 @@ func run() error {
 	}
 
 	return nil
-}
-
-// createFileName generates a file name for a meeting note based on the provided title and appointment time. It applies specified character replacements to the title and prefixes the file with the appointment date if the noDatePrefix flag is not set. The generated file name is returned as a string.
-func createFileName(folder, localTitle string, appointment time.Time) (string, error) {
-	return obsidianutils.CreateFileName(folder, localTitle, noDatePrefix, appointment)
 }
 
 // promptText runs a textual prompt
