@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path"
 	"strings"
@@ -13,20 +13,21 @@ import (
 	"github.com/sascha-andres/reuse/flag"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
+	"github.com/sascha-andres/obsidian-utils/internal"
 	"github.com/sascha-andres/obsidian-utils/internal/meeting"
 )
 
 var (
-	folder, interval, meetingFolder, dateTime, title string
-	recurring, noDatePrefix, printConfig, dryRun     bool
-	times                                            int
+	folder, interval, meetingFolder, dateTime, title, logLevel string
+	recurring, noDatePrefix, printConfig, dryRun               bool
+	times                                                      int
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
 func init() {
-	obsidianutils.AddCommonFlagPrefixes()
+	internal.AddCommonFlagPrefixes()
 	flag.SetEnvPrefix("OBS_UTIL_AM")
-	obsidianutils.AddCommonFlagPrefixes()
+	flag.StringVar(&logLevel, "log-level", "info", "pass log level (debug/info/warn/error)")
 	flag.StringVar(&folder, "folder", "", "base path of obsidian vault")
 	flag.StringVar(&meetingFolder, "meeting-folder", "", "where to store the meeting notes")
 	flag.BoolVar(&noDatePrefix, "no-date-prefix", false, "pass to not add yyyy-mm-dd prefix to filename")
@@ -37,15 +38,16 @@ func init() {
 	flag.BoolVar(&dryRun, "dry-run", false, "pass to not create files")
 	flag.StringVar(&dateTime, "date-time", "", "pass date and time in format yyyy-mm-dd hh:mm")
 	flag.StringVar(&title, "title", "", "pass title")
-	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
-	log.SetPrefix("[OBS_UTIL_AM] ")
 }
 
 // main is the entry point of the program.
 func main() {
 	flag.Parse()
-	if err := run(); err != nil {
-		log.Fatal(err)
+	logger := internal.CreateLogger(logLevel, "OBS_UTIL_AM")
+
+	if err := run(logger); err != nil {
+		logger.Error("error running application", "err", err)
+		os.Exit(1)
 	}
 }
 
@@ -67,8 +69,8 @@ func main() {
 //
 // The generated content is then saved to the determined filename.
 // An error is returned if any of the steps fail.
-func run() error {
-	log.Print("start creating a meeting note")
+func run(logger *slog.Logger) error {
+	logger.Info("start creating a meeting note")
 	if folder == "" {
 		return errors.New("-folder must be non empty")
 	}
@@ -98,11 +100,11 @@ func run() error {
 	}
 
 	if printConfig {
-		log.Println(fmt.Sprintf("meeting notes folder: %q", folder))
-		log.Println(fmt.Sprintf("interval: %q", interval))
-		log.Println(fmt.Sprintf("recurring: %t", recurring))
-		log.Println(fmt.Sprintf("noDatePrefix: %t", noDatePrefix))
-		log.Println(fmt.Sprintf("times: %d", times))
+		fmt.Printf("meeting notes folder: %q\n", folder)
+		fmt.Printf("interval: %q\n", interval)
+		fmt.Printf("recurring: %t\n", recurring)
+		fmt.Printf("noDatePrefix: %t\n", noDatePrefix)
+		fmt.Printf("times: %d\n", times)
 		return nil
 	}
 
@@ -164,14 +166,14 @@ func run() error {
 				t = t.Add(time.Hour * 336)
 			}
 		}
-		log.Printf("trying to create meeting with [%s] on [%s]", localTitle, t)
+		logger.Info("trying to create meeting", "title", localTitle, "appointment", t)
 
 		fullName, err := obsidianutils.CreateFileName(folder, localTitle, noDatePrefix, t)
 		if err != nil {
 			return err
 		}
 		if dryRun {
-			log.Printf("would create meeting with [%s] on [%s] in [%s]", localTitle, t, fullName)
+			fmt.Printf("would create meeting with [%s] on [%s] in [%s]\n", localTitle, t, fullName)
 		} else {
 			m, err := meeting.NewMeeting(meeting.WithTitle(localTitle))
 			if err != nil {

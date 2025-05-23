@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path"
 	"time"
@@ -12,20 +12,22 @@ import (
 	"github.com/sascha-andres/reuse/flag"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
+	"github.com/sascha-andres/obsidian-utils/internal"
 	"github.com/sascha-andres/obsidian-utils/internal/meeting"
 )
 
 var (
 	folder, meetingFolder, title, icalFile string
+	logLevel                               string
 	noDatePrefix, printConfig, dryRun      bool
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
 func init() {
-	obsidianutils.AddCommonFlagPrefixes()
+	internal.AddCommonFlagPrefixes()
 	flag.SetEnvPrefix("OBS_UTIL_ICAL")
-	obsidianutils.AddCommonFlagPrefixes()
 	flag.SetEnvPrefixForFlag("meeting-folder", "OBS_UTIL_AM")
+	flag.StringVar(&logLevel, "log-level", "info", "pass log level (debug/info/warn/error)")
 	flag.StringVar(&folder, "folder", "", "base path of obsidian vault")
 	flag.StringVar(&meetingFolder, "meeting-folder", "", "where to store the meeting notes")
 	flag.BoolVar(&noDatePrefix, "no-date-prefix", false, "pass to not add yyyy-mm-dd prefix to filename")
@@ -33,20 +35,20 @@ func init() {
 	flag.BoolVar(&dryRun, "dry-run", false, "pass to not create files")
 	flag.StringVar(&title, "title", "", "pass title")
 	flag.StringVar(&icalFile, "ical-file", "", "pass ical file")
-	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
-	log.SetPrefix("[OBS_UTIL_ICAL] ")
 }
 
 func main() {
 	flag.Parse()
-	if err := run(); err != nil {
-		log.Fatal(err)
+	logger := internal.CreateLogger(logLevel, "OBS_UTIL_ICAL")
+	if err := run(logger); err != nil {
+		logger.Error("error running application", "err", err)
+		os.Exit(1)
 	}
 }
 
 // run parses an iCal file, creates meeting notes in a specified folder, and supports options like dry-run and custom formatting.
-func run() error {
-	log.Print("start creating meeting notes from iCal file")
+func run(logger *slog.Logger) error {
+	logger.Info("start creating meeting notes from iCal file")
 	if icalFile == "" {
 		return errors.New("-ical-file must be non empty")
 	}
@@ -69,7 +71,7 @@ func run() error {
 		return err
 	}
 	if len(c.Events) == 0 {
-		log.Print("no events found")
+		logger.Info("no events found")
 		return nil
 	}
 	if folder == "" {
@@ -85,14 +87,14 @@ func run() error {
 	folder = path.Join(folder, meetingFolder)
 
 	if printConfig {
-		log.Println(fmt.Sprintf("meeting notes folder: %q", folder))
-		log.Println(fmt.Sprintf("noDatePrefix: %t", noDatePrefix))
+		fmt.Printf("meeting notes folder: %q", folder)
+		fmt.Printf("noDatePrefix: %t", noDatePrefix)
 		return nil
 	}
 
 	for _, event := range c.Events {
 		if event.Start.Before(time.Now()) {
-			log.Printf("skipping event in the past: %s", event.Summary)
+			logger.Debug("skipping event in the past", "summary", event.Summary, "start", *event.Start)
 			continue
 		}
 		fullName, err := obsidianutils.CreateFileName(folder, event.Summary, noDatePrefix, *event.Start)
@@ -100,11 +102,11 @@ func run() error {
 			return err
 		}
 		if _, err := os.Stat(fullName); err == nil {
-			log.Printf("skipping existing file: %s", fullName)
+			logger.Debug("skipping existing file", "file", fullName)
 			continue
 		}
 		if dryRun {
-			log.Printf("would create meeting with [%s] on [%s] in [%s]", event.Summary, *event.Start, fullName)
+			fmt.Printf("would create meeting with [%s] on [%s] in [%s]", event.Summary, *event.Start, fullName)
 			continue
 		}
 		m, err := meeting.NewMeeting(meeting.WithTitle(event.Summary))
@@ -119,7 +121,7 @@ func run() error {
 		if err = os.WriteFile(fullName, []byte(c), 0600); err != nil {
 			return err
 		}
-		log.Printf("created meeting with [%s] on [%s] in [%s]", event.Summary, *event.Start, fullName)
+		logger.Info("created meeting", "summary", event.Summary, "start", *event.Start, "file", fullName)
 	}
 	return nil
 }
