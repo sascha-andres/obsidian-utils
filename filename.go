@@ -2,7 +2,7 @@ package obsidianutils
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -31,5 +31,5 @@ func CreateFileName(folder, localTitle string, noDatePrefix bool, timeForPrefix 
 	if !noDatePrefix {
 		fName = fmt.Sprintf("%s %s", timeForPrefix.Format("2006-01-02"), fName)
 	}
-	return ApplyDirectoryPlaceHolder(path.Join(folder, fName))
+	return ApplyDirectoryPlaceHolder(filepath.Join(folder, fName))
 }
