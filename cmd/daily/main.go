@@ -5,7 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path"
 	"text/template"
@@ -14,6 +14,7 @@ import (
 	"github.com/sascha-andres/reuse/flag"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
+	"github.com/sascha-andres/obsidian-utils/internal"
 )
 
 type (
@@ -58,6 +59,7 @@ type (
 
 var (
 	folder, forDate, dailyFolder, templateFile string
+	logLevel                                   string
 	printConfig, overwrite                     bool
 )
 
@@ -68,27 +70,27 @@ var defaultTemplateFile string
 func init() {
 	obsidianutils.AddCommonFlagPrefixes()
 	flag.SetEnvPrefix("OBS_UTIL_DAILY")
+	flag.StringVar(&logLevel, "log-level", "info", "log level")
 	flag.StringVar(&folder, "folder", "", "base path to obsidian vault")
 	flag.StringVar(&dailyFolder, "daily-folder", "", "where to store the daily note inside the vault")
 	flag.StringVar(&templateFile, "template-file", "", "path to template file")
 	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
 	flag.BoolVar(&overwrite, "overwrite", false, "overwrite existing file")
 	flag.StringVar(&forDate, "for-date", time.Now().Format(time.DateOnly), "date for which to create the daily note (2006-01-02)")
-	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
-	log.SetPrefix("[OBS_UTIL_DAILY] ")
 }
 
 // main is the entry point of the program.
 func main() {
 	flag.Parse()
-	if err := run(); err != nil {
-		log.Fatal(err)
+	logger := internal.CreateLogger("OBS_UTIL_DAILY", logLevel)
+	if err := run(logger); err != nil {
+		logger.Error("error running daily", "err", err)
 	}
 }
 
 // run initializes and executes the daily note creation process based on specified folder paths, date, and template configuration.
-func run() error {
-	log.Print("start creating a daily note")
+func run(logger *slog.Logger) error {
+	logger.Info("start creating a daily note")
 
 	if folder == "" {
 		return errors.New("-folder must be non empty")
@@ -107,8 +109,8 @@ func run() error {
 	folder = path.Join(folder, dailyFolder)
 
 	if printConfig {
-		log.Println(fmt.Sprintf("daily notes folder: %q", folder))
-		log.Println(fmt.Sprintf("for-date: %q", forDate))
+		fmt.Printf("daily notes folder: %q", folder)
+		fmt.Printf("for-date: %q", forDate)
 		return nil
 	}
 
@@ -123,18 +125,18 @@ func run() error {
 	_ = os.MkdirAll(resultingDirectory, 0700)
 
 	if overwrite {
-		log.Printf("overwriting existing file %q", resultingFile)
+		logger.Info("overwriting existing file", "file", resultingFile)
 		_ = os.Remove(resultingFile)
 	}
 
 	if _, err := os.Stat(resultingFile); err == nil {
-		log.Printf("file %q already exists", resultingFile)
+		logger.Warn("file already exists", "file", resultingFile)
 		return nil
 	}
 
-	log.Printf("creating file %q", resultingFile)
+	logger.Info("creating file", "file", resultingFile)
 
-	tpl, err := executeTemplate(t, err)
+	tpl, err := executeTemplate(logger, t, err)
 	if err != nil {
 		return err
 	}
@@ -142,13 +144,13 @@ func run() error {
 	if err := os.WriteFile(resultingFile, tpl.Bytes(), 0600); err != nil {
 		return err
 	}
-	log.Printf("file %q created", resultingFile)
+	logger.Info("file created", "file", resultingFile)
 
 	return nil
 }
 
 // executeTemplate generates a template using the provided date and error, returning the rendered output or an error.
-func executeTemplate(t time.Time, err error) (bytes.Buffer, error) {
+func executeTemplate(logger *slog.Logger, t time.Time, err error) (bytes.Buffer, error) {
 	templateData := NoteData{}
 	templateData.DailyNoteFolder = dailyFolder
 	templateData.Current.Year = t.Format("2006")
@@ -167,7 +169,7 @@ func executeTemplate(t time.Time, err error) (bytes.Buffer, error) {
 	if templateFile != "" {
 		data, err := os.ReadFile(templateFile)
 		if err != nil {
-			log.Printf("could not read template file %q: %v", templateFile, err)
+			logger.Error("could not read template file", "file", templateFile, "err", err)
 			return bytes.Buffer{}, err
 		}
 		templateContent = string(data)
@@ -177,13 +179,13 @@ func executeTemplate(t time.Time, err error) (bytes.Buffer, error) {
 	}
 	templateEngine, err := template.New("daily").Parse(templateContent)
 	if err != nil {
-		log.Printf("could not parse template: %v", err)
+		logger.Error("could not parse template", "err", err)
 		return bytes.Buffer{}, err
 	}
 	var tpl bytes.Buffer
 	err = templateEngine.Execute(&tpl, templateData)
 	if err != nil {
-		log.Printf("could not execute template: %v", err)
+		logger.Error("could not execute template", "err", err)
 		return bytes.Buffer{}, err
 	}
 	return tpl, nil
