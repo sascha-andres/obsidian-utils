@@ -36,9 +36,7 @@ var (
 // init initializes the program's environment settings and configuration for Google-related utilities.
 // It sets an environment prefix, retrieves the current user, and defines the state directory flag for OAuth2 storage.
 func init() {
-	obsidianutils.AddCommonFlagPrefixes()
 	flag.SetEnvPrefix("GGL")
-
 	currentUser, err := user.Current()
 	if err != nil {
 		log.Fatal(err)

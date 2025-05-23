@@ -25,7 +25,7 @@ var (
 
 // init initializes the package by setting up flag options, log flags, and prefix.
 func init() {
-	obsidianutils.AddCommonFlagPrefixes()
+	internal.AddCommonFlagPrefixes()
 	flag.SetEnvPrefix("OBS_UTIL_AM")
 	flag.StringVar(&logLevel, "log-level", "info", "pass log level (debug/info/warn/error)")
 	flag.StringVar(&folder, "folder", "", "base path of obsidian vault")

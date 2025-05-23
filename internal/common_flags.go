@@ -1,4 +1,4 @@
-package obsidianutils
+package internal
 
 import "github.com/sascha-andres/reuse/flag"
 

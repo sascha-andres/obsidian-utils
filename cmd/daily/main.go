@@ -68,7 +68,7 @@ var defaultTemplateFile string
 
 // init initializes the package by setting up flag options, log flags, and prefix.
 func init() {
-	obsidianutils.AddCommonFlagPrefixes()
+	internal.AddCommonFlagPrefixes()
 	flag.SetEnvPrefix("OBS_UTIL_DAILY")
 	flag.StringVar(&logLevel, "log-level", "info", "log level")
 	flag.StringVar(&folder, "folder", "", "base path to obsidian vault")
