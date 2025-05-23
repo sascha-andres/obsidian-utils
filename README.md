@@ -36,6 +36,21 @@ Each utility can be installed separately. Please refer to the individual README 
 
 Please refer to the individual README files for usage instructions for each utility.
 
+## Continuous Integration and Deployment
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+- **Pull Request Tests**: Automatically builds the code on Linux, macOS, and Windows to ensure it compiles correctly when a pull request is opened.
+- **Release Creation**: Automatically creates a new release with binaries for Linux, macOS, and Windows when a new tag is pushed.
+
+### Creating a Release
+
+To create a new release:
+
+1. Tag the commit you want to release with a version number: `git tag v1.0.0`
+2. Push the tag to GitHub: `git push origin v1.0.0`
+3. GitHub Actions will automatically create a release and build binaries for all platforms.
+
 ## License
 
 This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0) - see the LICENSE file for details. This license allows you to obtain, run, and modify the code, but prohibits using it for commercial purposes (selling it for money with or without changes).
