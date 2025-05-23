@@ -82,7 +82,7 @@ func TestCreateFileName(t *testing.T) {
 		},
 		{
 			name:          "With directory placeholder",
-			folder:        "$$PWD$$/test",
+			folder:        filepath.Join("$$PWD$$", "test"),
 			title:         "Test Note",
 			noDatePrefix:  false,
 			timeForPrefix: fixedTime,
