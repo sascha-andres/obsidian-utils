@@ -1,20 +1,19 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/manifoldco/promptui"
 	"github.com/sascha-andres/reuse/flag"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
+	"github.com/sascha-andres/obsidian-utils/internal/meeting"
 )
 
 var (
@@ -27,6 +26,7 @@ var (
 func init() {
 	obsidianutils.AddCommonFlagPrefixes()
 	flag.SetEnvPrefix("OBS_UTIL_AM")
+	obsidianutils.AddCommonFlagPrefixes()
 	flag.StringVar(&folder, "folder", "", "base path of obsidian vault")
 	flag.StringVar(&meetingFolder, "meeting-folder", "", "where to store the meeting notes")
 	flag.BoolVar(&noDatePrefix, "no-date-prefix", false, "pass to not add yyyy-mm-dd prefix to filename")
@@ -166,14 +166,18 @@ func run() error {
 		}
 		log.Printf("trying to create meeting with [%s] on [%s]", localTitle, t)
 
-		fullName, err := createFileName(folder, localTitle, t)
+		fullName, err := obsidianutils.CreateFileName(folder, localTitle, noDatePrefix, t)
 		if err != nil {
 			return err
 		}
 		if dryRun {
 			log.Printf("would create meeting with [%s] on [%s] in [%s]", localTitle, t, fullName)
 		} else {
-			c, err := createContent(localTitle, t)
+			m, err := meeting.NewMeeting(meeting.WithTitle(localTitle))
+			if err != nil {
+				return err
+			}
+			c, err := m.CreateContent(localTitle, t)
 			if err != nil {
 				return err
 			}
@@ -185,92 +189,6 @@ func run() error {
 	}
 
 	return nil
-}
-
-// createContent generates the content for a meeting note using a template.
-// It takes a title and an appointment time as parameters.
-// The template data includes the current time, the appointment date,
-// and the title, which are combined and executed using a template engine.
-// The resulting content is returned as a string.
-// If an error occurs during the parsing or execution of the template,
-// an empty string and the error are returned.
-func createContent(title string, appointment time.Time) (string, error) {
-	tmpl, err := template.New("m").Parse(meetingTemplate)
-	if err != nil {
-		return "", err
-	}
-	td := TemplateData{time.Now().Format(time.RFC850), appointment.Format(time.RFC3339), title, appointment.Format("2006-01-02")}
-	var tpl bytes.Buffer
-	err = tmpl.Execute(&tpl, td)
-	return tpl.String(), err
-}
-
-// TemplateData represents the data necessary for rendering a template. It contains
-// fields for the current time, the appointment time, and the title. This data is used
-// to generate the content of a meeting note by executing a template.
-type TemplateData struct {
-
-	// Now represents the current time as a string. It is a field in the TemplateData struct, which is used to generate the content of a meeting note by executing a template.
-	Now string
-
-	// Appointment represents the appointment time in a TemplateData struct. It is used to generate the content of a meeting note by executing a template.
-	Appointment string
-
-	// Title represents the title of a meeting. It is a field in the TemplateData struct,
-	// which is used to generate the content of a meeting note by executing a template.
-	Title string
-
-	// DayNote is a field of struct type TemplateData. It represents a string used to link to the daily note
-	DayNote string
-}
-
-// The `meetingTemplate` constant is a string that represents a template for generating meeting notes.
-// It uses the Go template syntax and incorporates placeholders for various fields such as the current date,
-// the appointment date, and the meeting title.
-// This template can be used with the `createContent` function to generate the content of a meeting note by
-// providing the necessary data such as the title and appointment time.
-// The resulting content is returned as a string.
-const meetingTemplate = `---
-date created: {{ .Now }}
-date modified: {{ .Now }}
-tags:
-  - meeting
-aliases: 
-date: {{ .Appointment }}
-title: {{ .Title }}
----
-
-[[{{ .DayNote }}]]
-
-# Meeting
-
-## Attendees
-
-## Notes`
-
-// replacements is a map containing character replacements for German umlauts and other special characters.
-var replacements = map[string]string{
-	"ä": "ae",
-	"ö": "oe",
-	"ü": "ue",
-	"Ä": "Ae",
-	"Ö": "Oe",
-	"Ü": "Ue",
-	"ß": "ss",
-	":": "",
-}
-
-// createFileName generates a file name for a meeting note based on the provided title and appointment time. It applies specified character replacements to the title and prefixes the file with the appointment date if the noDatePrefix flag is not set. The generated file name is returned as a string.
-func createFileName(folder, localTitle string, appointment time.Time) (string, error) {
-	fixed := localTitle
-	for k, v := range replacements {
-		fixed = strings.ReplaceAll(fixed, k, v)
-	}
-	fName := fmt.Sprintf("%s.md", fixed)
-	if !noDatePrefix {
-		fName = fmt.Sprintf("%s %s", appointment.Format("2006-01-02"), fName)
-	}
-	return obsidianutils.ApplyDirectoryPlaceHolder(path.Join(folder, fName))
 }
 
 // promptText runs a textual prompt
