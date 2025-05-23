@@ -44,6 +44,7 @@ func main() {
 	}
 }
 
+// run parses an iCal file, creates meeting notes in a specified folder, and supports options like dry-run and custom formatting.
 func run() error {
 	log.Print("start creating meeting notes from iCal file")
 	if icalFile == "" {
