@@ -226,7 +226,7 @@ func initializeOutputDirectory(writeTo string) error {
 // main initializes the program by parsing flags and executes the run function. It logs a fatal error if the run fails.
 func main() {
 	flag.Parse()
-	logger := internal.CreateLogger("OBS_UTIL_DAILY", logLevel)
+	logger := internal.CreateLogger(logLevel, "GGL")
 	if err := run(logger); err != nil {
 		logger.Error("error running", "err", err)
 	}
