@@ -229,6 +229,7 @@ func main() {
 	logger := internal.CreateLogger(logLevel, "GGL")
 	if err := run(logger); err != nil {
 		logger.Error("error running", "err", err)
+		os.Exit(1)
 	}
 }
 

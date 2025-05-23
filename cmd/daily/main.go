@@ -85,6 +85,7 @@ func main() {
 	logger := internal.CreateLogger("OBS_UTIL_DAILY", logLevel)
 	if err := run(logger); err != nil {
 		logger.Error("error running daily", "err", err)
+		os.Exit(1)
 	}
 }
 
