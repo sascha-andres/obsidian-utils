@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -21,21 +22,21 @@ import (
 	"google.golang.org/api/people/v1"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
+	"github.com/sascha-andres/obsidian-utils/internal"
 )
 
 // Scopes required for reading contacts and contact groups
 const contactsScope = "https://www.googleapis.com/auth/contacts.readonly"
 
 var (
-	stateDirectory  string
-	outputDirectory string
-	printToConsole  string
-	verbose         bool
+	stateDirectory, outputDirectory, printToConsole, logLevel string
+	verbose                                                   bool
 )
 
 // init initializes the program's environment settings and configuration for Google-related utilities.
 // It sets an environment prefix, retrieves the current user, and defines the state directory flag for OAuth2 storage.
 func init() {
+	obsidianutils.AddCommonFlagPrefixes()
 	flag.SetEnvPrefix("GGL")
 
 	currentUser, err := user.Current()
@@ -45,20 +46,21 @@ func init() {
 	flag.StringVar(&stateDirectory, "state-directory", path.Join(currentUser.HomeDir, ".local/state/ggl"), "Directory to store OAuth2 state")
 	flag.StringVar(&outputDirectory, "output-directory", ".", "Directory to store output files")
 	flag.StringVar(&printToConsole, "print-to-console", "", "Print data to console instead of writing to files, may be contacts or groups")
+	flag.StringVar(&logLevel, "log-level", "info", "Log level, one of: debug, info, warn, error, fatal")
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose output")
 }
 
 // getClient retrieves a token, saves it, then returns the OAuth2 client
-func getClient(config *oauth2.Config) (*http.Client, error) {
+func getClient(logger *slog.Logger, config *oauth2.Config) (*http.Client, error) {
 	// The file token.json stores the user's access and refresh tokens
 	tokenFile := path.Join(stateDirectory, "token.json")
-	tok, err := tokenFromFile(tokenFile)
+	tok, err := tokenFromFile(logger, tokenFile)
 	if err != nil {
 		tok, err = getTokenFromWeb(config)
 		if err != nil {
 			return nil, err
 		}
-		err = saveToken(tokenFile, tok)
+		err = saveToken(logger, tokenFile, tok)
 		if err != nil {
 			return nil, err
 		}
@@ -66,7 +68,7 @@ func getClient(config *oauth2.Config) (*http.Client, error) {
 	return config.Client(context.Background(), tok), nil
 }
 
-// openBrowser opens a browser window to the specified URL
+// openBrowser opens a browser window with the specified URL
 func openBrowser(url string) {
 	var err error
 
@@ -113,7 +115,7 @@ func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
 			return
 		}
 
-		// Display success message to the user
+		// Display a success message to the user
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = fmt.Fprintf(w, "<html><body><h1>Authentication Successful</h1><p>You can close this window now.</p></body></html>")
 
@@ -123,7 +125,7 @@ func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
 
 	// Start the server in a goroutine
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errChan <- err
 		}
 	}()
@@ -165,19 +167,24 @@ func getTokenFromWeb(config *oauth2.Config) (*oauth2.Token, error) {
 }
 
 // tokenFromFile retrieves a token from a local file
-func tokenFromFile(file string) (*oauth2.Token, error) {
+func tokenFromFile(logger *slog.Logger, file string) (*oauth2.Token, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Error("error closing token file", "err", err)
+		}
+	}()
 	tok := &oauth2.Token{}
 	err = json.NewDecoder(f).Decode(tok)
 	return tok, err
 }
 
 // saveToken saves a token to a file
-func saveToken(path string, token *oauth2.Token) error {
+func saveToken(logger *slog.Logger, path string, token *oauth2.Token) error {
 	if verbose {
 		fmt.Printf("Saving credential file to: %s\n", path)
 	}
@@ -185,7 +192,12 @@ func saveToken(path string, token *oauth2.Token) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Error("error closing token file", "err", err)
+		}
+	}()
 	return json.NewEncoder(f).Encode(token)
 }
 
@@ -214,27 +226,27 @@ func initializeOutputDirectory(writeTo string) error {
 // main initializes the program by parsing flags and executes the run function. It logs a fatal error if the run fails.
 func main() {
 	flag.Parse()
-
-	if err := run(); err != nil {
-		log.Fatal(err)
+	logger := internal.CreateLogger("OBS_UTIL_DAILY", logLevel)
+	if err := run(logger); err != nil {
+		logger.Error("error running", "err", err)
 	}
 }
 
 // run orchestrates the execution of initializing directories, authenticating, and exporting contacts and groups.
 // It interacts with the Google People API and handles both contacts and contact groups data.
 // Returns an error if any of the steps fail.
-func run() error {
+func run(logger *slog.Logger) error {
 	ctx := context.Background()
 
 	writeTo, err := obsidianutils.ApplyDirectoryPlaceHolder(outputDirectory)
 	if err != nil {
 		return err
 	}
-	err = initializeEnvironment(writeTo)
+	err = initializeEnvironment(logger, writeTo)
 	if err != nil {
 		return err
 	}
-	srv, err := initializeGoogleApiClient(err, ctx)
+	srv, err := initializeGoogleApiClient(logger, ctx)
 	if err != nil {
 		return err
 	}
@@ -269,7 +281,7 @@ func handleGroups(srv *people.Service, writeTo string) error {
 	} else if printToConsole == "" {
 		// Write groups data to file
 		groupsOutputFile := path.Join(writeTo, "groups.json")
-		err = ioutil.WriteFile(groupsOutputFile, groupsJsonData, 0644)
+		err = os.WriteFile(groupsOutputFile, groupsJsonData, 0644)
 		if err != nil {
 			return fmt.Errorf("unable to write groups to file: %w", err)
 		}
@@ -302,9 +314,9 @@ func handleContacts(srv *people.Service, writeTo string) error {
 	if printToConsole == "contacts" {
 		fmt.Println(string(jsonData))
 	} else if printToConsole == "" {
-		// Write contacts data to file
+		// Write contacts data to a file
 		outputFile := path.Join(writeTo, "contacts.json")
-		err = ioutil.WriteFile(outputFile, jsonData, 0644)
+		err = os.WriteFile(outputFile, jsonData, 0644)
 		if err != nil {
 			return fmt.Errorf("unable to write contacts to file: %w", err)
 		}
@@ -318,7 +330,7 @@ func handleContacts(srv *people.Service, writeTo string) error {
 }
 
 // initializeGoogleApiClient initializes and returns a Google People Service client using OAuth2.
-func initializeGoogleApiClient(err error, ctx context.Context) (*people.Service, error) {
+func initializeGoogleApiClient(logger *slog.Logger, ctx context.Context) (*people.Service, error) {
 	// Check if credentials.json exists
 	credFile := path.Join(stateDirectory, "credentials.json")
 	if _, err := os.Stat(credFile); os.IsNotExist(err) {
@@ -335,7 +347,7 @@ func initializeGoogleApiClient(err error, ctx context.Context) (*people.Service,
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse client secret file to config: %w", err)
 	}
-	client, err := getClient(config)
+	client, err := getClient(logger, config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve token: %w", err)
 	}
@@ -349,15 +361,16 @@ func initializeGoogleApiClient(err error, ctx context.Context) (*people.Service,
 }
 
 // initializeEnvironment sets up the necessary directories for application state and output, returning an error on failure.
-func initializeEnvironment(writeTo string) error {
+func initializeEnvironment(logger *slog.Logger, writeTo string) error {
 	err := initializeStateDirectory()
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("error state directory", "err", err)
+		return err
 	}
 
 	err = initializeOutputDirectory(writeTo)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("error initializing output directory", "err", err)
 	}
 	return err
 }
