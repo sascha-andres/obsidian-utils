@@ -26,6 +26,7 @@ var (
 func init() {
 	obsidianutils.AddCommonFlagPrefixes()
 	flag.SetEnvPrefix("OBS_UTIL_AM")
+	obsidianutils.AddCommonFlagPrefixes()
 	flag.StringVar(&folder, "folder", "", "base path of obsidian vault")
 	flag.StringVar(&meetingFolder, "meeting-folder", "", "where to store the meeting notes")
 	flag.BoolVar(&noDatePrefix, "no-date-prefix", false, "pass to not add yyyy-mm-dd prefix to filename")
