@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	folder, meetingFolder, title, icalFile string
-	logLevel                               string
-	noDatePrefix, printConfig, dryRun      bool
+	folder, meetingFolder, icalFile          string
+	logLevel                                 string
+	noDatePrefix, printConfig, dryRun, force bool
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
@@ -33,7 +33,7 @@ func init() {
 	flag.BoolVar(&noDatePrefix, "no-date-prefix", false, "pass to not add yyyy-mm-dd prefix to filename")
 	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
 	flag.BoolVar(&dryRun, "dry-run", false, "pass to not create files")
-	flag.StringVar(&title, "title", "", "pass title")
+	flag.BoolVar(&force, "force", false, "pass to overwrite existing files")
 	flag.StringVar(&icalFile, "ical-file", "", "pass ical file")
 }
 
@@ -102,11 +102,21 @@ func run(logger *slog.Logger) error {
 			return err
 		}
 		if _, err := os.Stat(fullName); err == nil {
-			logger.Debug("skipping existing file", "file", fullName)
-			continue
+			if force {
+				if !dryRun {
+					err = os.Remove(fullName)
+					if err != nil {
+						logger.Error("could not remove existing file", "file", fullName)
+						os.Exit(1)
+					}
+				}
+			} else {
+				logger.Debug("skipping existing file", "file", fullName)
+				continue
+			}
 		}
 		if dryRun {
-			fmt.Printf("would create meeting with [%s] on [%s] in [%s]", event.Summary, *event.Start, fullName)
+			fmt.Printf("would create meeting with [%s] on [%s] in [%s]\n", event.Summary, *event.Start, fullName)
 			continue
 		}
 		m, err := meeting.NewMeeting(meeting.WithTitle(event.Summary))
