@@ -3,6 +3,7 @@ package meeting
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -92,8 +93,19 @@ func (m *Meeting) CreateContent(title string, appointment time.Time) (string, er
 	if err != nil {
 		return "", err
 	}
+	err = m.cleanTitle()
+	if err != nil {
+		return "", err
+	}
 	td := TemplateData{time.Now().Format(time.RFC850), appointment.Format(time.RFC3339), m.title, appointment.Format("2006-01-02")}
 	var tpl bytes.Buffer
 	err = tmpl.Execute(&tpl, td)
 	return tpl.String(), err
+}
+
+func (m *Meeting) cleanTitle() error {
+	m.title = strings.TrimSpace(m.title)
+	m.title = strings.ReplaceAll(m.title, "\n", "->")
+	m.title = strings.ReplaceAll(m.title, ":", "-")
+	return nil
 }
