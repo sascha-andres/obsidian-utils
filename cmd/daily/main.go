@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -105,6 +107,22 @@ func run(logger *slog.Logger) error {
 	}
 	if forDate == "" {
 		forDate = time.Now().Format(time.DateOnly)
+	}
+	if strings.HasPrefix(forDate, "-") {
+		relativeString := strings.TrimPrefix(forDate, "-")
+		offset, err := strconv.Atoi(relativeString)
+		if err != nil {
+			return err
+		}
+		forDate = time.Now().AddDate(0, 0, offset*-1).Format(time.DateOnly)
+	}
+	if strings.HasPrefix(forDate, "+") {
+		relativeString := strings.TrimPrefix(forDate, "+")
+		offset, err := strconv.Atoi(relativeString)
+		if err != nil {
+			return err
+		}
+		forDate = time.Now().AddDate(0, 0, offset).Format(time.DateOnly)
 	}
 
 	folder = path.Join(folder, dailyFolder)
