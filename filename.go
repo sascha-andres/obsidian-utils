@@ -17,6 +17,7 @@ var replacements = map[string]string{
 	"Ü": "Ue",
 	"ß": "ss",
 	":": "",
+	"/": "-",
 }
 
 // CreateFileName generates a file name for a note based on the provided title and appointment time. It applies
