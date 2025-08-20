@@ -23,7 +23,6 @@ type (
 
 	// DayData represents the structured data for a specific date including year, month, day, and a composite date-only string.
 	DayData struct {
-
 		// Year represents the year portion of a date in a string format.
 		Year string
 
@@ -43,7 +42,6 @@ type (
 	// Current holds the DayData for the current date.
 	// DailyNoteFolder specifies the directory path for storing daily notes.
 	NoteData struct {
-
 		// Previous represents the DayData for the prior day relative to the current date.
 		Previous DayData
 
