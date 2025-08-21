@@ -13,6 +13,7 @@ coffein: false
 milk: false
 date: "{{ .Current.DateOnly }}"
 diarrhea: false
+fart: false
 fruit: false
 headache: false
 month: "[[{{ .DailyNoteFolder }}/{{ .Current.Year }}/{{ .Current.Month }}/00 Index|{{ .Current.Month }}]]"
@@ -35,9 +36,9 @@ weight: 0
 - [[{{ .Current.DateOnly }}#Today's birthdays|Today's birthdays]]
 - [[{{ .Current.DateOnly }}#Work|Work]]
 - [[{{ .Current.DateOnly }}#Health|Health]]
- 	- [[{{ .Current.DateOnly }}#Food & beverages|Food & beverages]]
-  		- [[{{ .Current.DateOnly }}#Beverages|Beverages]]
-  		- [[{{ .Current.DateOnly }}#Food|Food]]
+  - [[{{ .Current.DateOnly }}#Food & beverages|Food & beverages]]
+    - [[{{ .Current.DateOnly }}#Beverages|Beverages]]
+    - [[{{ .Current.DateOnly }}#Food|Food]]
 - [[{{ .Current.DateOnly }}#Other stuff|Other stuff]]
 - [[{{ .Current.DateOnly }}#Tasks|Tasks]]
 - [[{{ .Current.DateOnly }}#New Items Created|New Items created]]
