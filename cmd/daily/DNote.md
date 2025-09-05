@@ -22,7 +22,7 @@ vegetables: false
 year: "[[{{ .DailyNoteFolder }}/{{ .Current.Year }}/00 Index|{{ .Current.Year }}]]"
 watch charged: false
 work time: 0
-work location: Home
+work location: {{ .WorkLocation }}
 weight: 0
 ---
 
