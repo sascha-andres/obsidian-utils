@@ -54,11 +54,15 @@ type (
 		// DailyNoteFolder defines the path or location where daily notes are stored as a string.
 		// which is basically the -daily-folder parameter
 		DailyNoteFolder string
+
+		// WorkLocation specifies the location associated with the current note's context, typically related to the daily note's metadata.
+		WorkLocation string
 	}
 )
 
 var (
 	folder, forDate, dailyFolder, templateFile string
+	defaultWorkLocation                        = "Office"
 	logLevel                                   string
 	printConfig, overwrite                     bool
 )
@@ -71,6 +75,7 @@ func init() {
 	internal.AddCommonFlagPrefixes()
 	flag.SetEnvPrefix("OBS_UTIL_DAILY")
 	flag.StringVar(&logLevel, "log-level", "info", "log level")
+	flag.StringVar(&defaultWorkLocation, "default-work-location", defaultWorkLocation, "default work location")
 	flag.StringVar(&folder, "folder", "", "base path to obsidian vault")
 	flag.StringVar(&dailyFolder, "daily-folder", "", "where to store the daily note inside the vault")
 	flag.StringVar(&templateFile, "template-file", "", "path to template file")
@@ -182,6 +187,7 @@ func executeTemplate(logger *slog.Logger, t time.Time, err error) (bytes.Buffer,
 	templateData.Next.Month = t.AddDate(0, 0, 1).Format("01")
 	templateData.Next.Day = t.AddDate(0, 0, 1).Format("02")
 	templateData.Next.DateOnly = t.AddDate(0, 0, 1).Format("2006-01-02")
+	templateData.WorkLocation = defaultWorkLocation
 	templateContent := ""
 	if templateFile != "" {
 		data, err := os.ReadFile(templateFile)
