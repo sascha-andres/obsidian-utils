@@ -188,6 +188,11 @@ func executeTemplate(logger *slog.Logger, t time.Time, err error) (bytes.Buffer,
 	templateData.Next.Day = t.AddDate(0, 0, 1).Format("02")
 	templateData.Next.DateOnly = t.AddDate(0, 0, 1).Format("2006-01-02")
 	templateData.WorkLocation = defaultWorkLocation
+
+	if t.Weekday() == time.Saturday || t.Weekday() == time.Sunday {
+		templateData.WorkLocation = "Weekend"
+	}
+
 	templateContent := ""
 	if templateFile != "" {
 		data, err := os.ReadFile(templateFile)
