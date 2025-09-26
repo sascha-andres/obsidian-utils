@@ -11,6 +11,7 @@ beef: false
 chicken: false
 coffein: false
 milk: false
+blood pressure high: false
 date: "{{ .Current.DateOnly }}"
 diarrhea: false
 fart: false
