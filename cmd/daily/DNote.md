@@ -82,19 +82,7 @@ Wake up:
 
 - This contains a list of stuff I did not related to work
 
-## Tasks
-
-```tasks
-group by function task.tags.length?task.tags.map((tag)=>(tag=="#task/todo"?"Me":(tag=="#task/work"?"Work":(tag=="#task/DMREG"?"Work":(tag=="#task/comm"?"Me":(tag=="#task/it"?"Work":(tag=="#task/bug"?"Dev":(tag=="#task/stream"?"Watch":(tag=="#task/shopping"?"Buy":(tag=="#task/carmen"?"Carmen":(tag=="#task/dev"?"Dev":"Me"))))))))))):"Me"
-hide tags
-sort by urgency
-not done
-path does not include Template
-path does not include group_task
-starts before tomorrow
-```
-
-### Tasks done
+## Tasks done
 
 ```tasks
 group by function task.tags.length?task.tags.map((tag)=>(tag=="#task/todo"?"Me":(tag=="#task/work"?"Work":(tag=="#task/DMREG"?"Work":(tag=="#task/comm"?"Me":(tag=="#task/it"?"Work":(tag=="#task/bug"?"Dev":(tag=="#task/stream"?"Watched":(tag=="task/shopping"?"Buy":(tag=="#task/carmen"?"Carmen":(tag=="#task/dev"?"Dev":"Me"))))))))))):"Me"
