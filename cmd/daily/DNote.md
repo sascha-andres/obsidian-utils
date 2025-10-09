@@ -57,11 +57,10 @@ SORT dateformat(date(date), "HH:mm") ASC
 
 ## Today's birthdays
 
-```dataview
-TABLE
-birthday
-FROM #contact
-where birthday and dateformat(date(birthday), "MM-dd") = "{{ .Current.Month }}-{{ .Current.Day }}"
+```dataviewjs
+const notes = dv.pages('#contact').where(p => p.birthday && dv.func.dateformat(dv.date(p.birthday), "MM-dd") == "{{ .Current.Month }}-{{ .Current.Day }}" )
+if (notes.length) dv.list(notes.file.link)
+else dv.paragraph("No results found!")
 ```
 
 ## Work
