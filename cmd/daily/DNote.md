@@ -55,7 +55,7 @@ WHERE dateformat(date(date), "yyyy-MM-dd") = dateformat(date(this.date), "yyyy-M
 SORT dateformat(date(date), "HH:mm") ASC
 ```
 
-# Today's birthdays
+## Today's birthdays
 
 ```dataview
 TABLE
