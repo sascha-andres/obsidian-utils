@@ -60,7 +60,7 @@ SORT dateformat(date(date), "HH:mm") ASC
 ```dataviewjs
 const notes = dv.pages('#contact').where(p => p.birthday && dv.func.dateformat(dv.date(p.birthday), "MM-dd") == "{{ .Current.Month }}-{{ .Current.Day }}" )
 if (notes.length) dv.list(notes.file.link)
-else dv.paragraph("No results found!")
+else dv.paragraph("No birthdays today!")
 ```
 
 ## Work
