@@ -65,8 +65,6 @@ else dv.paragraph("No birthdays today!")
 
 ## Work
 
-- This contains a list of stuff I did related to work
-
 ## Health
 
 Wake up:
@@ -78,8 +76,6 @@ Wake up:
 #### Food
 
 ## Other stuff
-
-- This contains a list of stuff I did not related to work
 
 ## Tasks done
 
