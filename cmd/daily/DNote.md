@@ -46,21 +46,14 @@ weight: 0
 
 ## Today's meetings
 
-```dataview
-TABLE
-dateformat(date(date), "HH:mm") as Time,
-title as Title
-FROM #meeting
-WHERE dateformat(date(date), "yyyy-MM-dd") = dateformat(date(this.date), "yyyy-MM-dd")
-SORT dateformat(date(date), "HH:mm") ASC
+```dynamic-embed
+[[Daily appointment]]
 ```
 
 ## Today's birthdays
 
-```dataviewjs
-const notes = dv.pages('#contact').where(p => p.birthday && dv.func.dateformat(dv.date(p.birthday), "MM-dd") == "{{ .Current.Month }}-{{ .Current.Day }}" )
-if (notes.length) dv.list(notes.file.link)
-else dv.paragraph("No birthdays today!")
+```dynamic-embed
+[[Daily birthday]]
 ```
 
 ## Work
