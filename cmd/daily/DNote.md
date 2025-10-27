@@ -60,8 +60,6 @@ weight: 0
 
 ## Health
 
-Wake up:
-
 ### Food & beverages
 
 #### Beverages
@@ -81,14 +79,6 @@ done "{{ .Current.DateOnly }}"
 
 ## New or changed items
 
-```dataview
-table date-created as "Planted at",
-date-modified as "Last tended to",
-length(file.inlinks) as "In Links", 
-length(file.outlinks) as "Out Links"
-where (date(file.cday) <= (date(this.date) + dur(1 day))
-and date(file.cday) >= date(this.date)) or ((date(file.mday) <= (date(this.date) + dur(1 day))
-and date(file.mday) >= date(this.date)))
-and contains(file.name, "Calls") = false
-and contains(file.name, "Messages") = false
+```dynamic-embed
+[[New or changed items]]
 ```
