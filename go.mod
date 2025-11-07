@@ -4,6 +4,8 @@ go 1.23.0
 
 require (
 	github.com/adrg/frontmatter v0.2.0
+	github.com/apognu/gocal v0.9.1
+	github.com/google/go-cmp v0.7.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/sascha-andres/reuse v0.9.1
 	golang.org/x/oauth2 v0.30.0
@@ -17,7 +19,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/ChannelMeter/iso8601duration v0.0.0-20150204201828-8da3af7a2a61 // indirect
-	github.com/apognu/gocal v0.9.1 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
