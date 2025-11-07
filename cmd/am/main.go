@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/manifoldco/promptui"
 	"github.com/sascha-andres/reuse/flag"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
@@ -125,7 +124,7 @@ func run(logger *slog.Logger) error {
 		}
 		ts = dateTime
 	} else {
-		ts, err = promptText("provide date and time (2006-01-02 15:04)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
+		ts, err = internal.PromptText("provide date and time (2006-01-02 15:04)", time.Now().Format("2006-01-02 15:04"), func(i string) error {
 			_, err := time.Parse("2006-01-02 15:04", i)
 			return err
 		})
@@ -138,7 +137,7 @@ func run(logger *slog.Logger) error {
 	if title != "" {
 		localTitle = title
 	} else {
-		localTitle, err = promptText("get title", "", func(s string) error {
+		localTitle, err = internal.PromptText("get title", "", func(s string) error {
 			if strings.TrimSpace(s) == "" {
 				return errors.New("empty title")
 			}
@@ -191,16 +190,4 @@ func run(logger *slog.Logger) error {
 	}
 
 	return nil
-}
-
-// promptText runs a textual prompt
-func promptText(label, defaultValue string, val func(string) error) (string, error) {
-	prompt := promptui.Prompt{
-		Label:   label,
-		Default: defaultValue,
-	}
-	if nil != val {
-		prompt.Validate = val
-	}
-	return prompt.Run()
 }

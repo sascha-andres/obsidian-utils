@@ -68,7 +68,18 @@ func run(_ context.Context) error {
 		return err
 	}
 
-	newFileData, err := addBulletpoint(fileData, "xxx", headline)
+	bulletPoint, err := internal.PromptText("Journal entry", "", func(s string) error {
+		if len(s) == 0 {
+			return errors.New("journal entry cannot be empty")
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	newFileData, err := addBulletpoint(fileData, fmt.Sprintf("(%s) %s", time.Now().Format("15:04"), bulletPoint), headline)
 	if err != nil {
 		logger.Error("could not add bullet point", "err", err, "file", resultingFile, "headline", headline)
 		return err
