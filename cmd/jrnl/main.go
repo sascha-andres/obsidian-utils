@@ -84,7 +84,7 @@ func run(_ context.Context) error {
 		return nil
 	}
 
-	return nil
+	return os.WriteFile(resultingFile, newFileData, 0640)
 }
 
 func addBulletpoint(data []byte, bulletPoint, after string) ([]byte, error) {
@@ -174,18 +174,43 @@ func addBulletpoint(data []byte, bulletPoint, after string) ([]byte, error) {
 		lines = append(lines[:insertion], append([]string{newLine}, lines[insertion:]...)...)
 	} else {
 		// 3b) No list found before next headline. Create a new list with the bullet point as first item.
-		insertion := start + 1
-		newLines := []string{}
-		// Add a blank line if the immediate next line is not blank and not end boundary
-		if insertion < len(lines) && strings.TrimSpace(lines[insertion]) != "" && insertion < end {
-			newLines = append(newLines, "")
+		// Requirement: ensure exactly one empty line between the starting line and the newly created list.
+		blankStart := start + 1
+		blankEnd := blankStart
+		// Consume existing blank lines right after the anchor (but stop at next headline boundary)
+		for blankEnd < len(lines) && blankEnd < end && strings.TrimSpace(lines[blankEnd]) == "" {
+			blankEnd++
 		}
-		newLines = append(newLines, fmt.Sprintf("- %s", bulletPoint))
-		// If we inserted right before a headline without a separating blank line, add one for readability
-		if insertion < len(lines) && insertion < end && isHeadline(lines[insertion]) {
-			newLines = append(newLines, "")
+		// Ensure there is exactly one blank line between the anchor and the list:
+		// - If there were no blank lines, insert one at blankStart.
+		// - If there were multiple, collapse them to a single one by removing extras.
+		if blankStart >= len(lines) {
+			// Anchor was the last line; just append the one blank line and the new list item.
+			lines = append(lines, "", fmt.Sprintf("- %s", bulletPoint))
+		} else {
+			// We will make sure lines[blankStart] is a blank line and remove any additional blank lines up to blankEnd.
+			if strings.TrimSpace(lines[blankStart]) != "" {
+				// Insert a blank line at blankStart
+				lines = append(lines[:blankStart], append([]string{""}, lines[blankStart:]...)...)
+				// After insertion, the first non-blank shifts by +1
+				blankEnd = blankStart + 1
+				if blankEnd < len(lines) {
+					for blankEnd < len(lines) && blankEnd < end+1 && strings.TrimSpace(lines[blankEnd]) == "" {
+						blankEnd++
+					}
+				}
+			} else {
+				// Collapse multiple blank lines to exactly one
+				if blankEnd > blankStart+1 {
+					lines = append(lines[:blankStart+1], lines[blankEnd:]...)
+					// Adjust end boundary after deletion
+					end -= (blankEnd - (blankStart + 1))
+				}
+			}
+			// Insert the new list item right after the single blank line
+			insertion := blankStart + 1
+			lines = append(lines[:insertion], append([]string{fmt.Sprintf("- %s\n", bulletPoint)}, lines[insertion:]...)...)
 		}
-		lines = append(lines[:insertion], append(newLines, lines[insertion:]...)...)
 	}
 
 	return []byte(strings.Join(lines, "\n")), nil
