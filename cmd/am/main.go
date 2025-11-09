@@ -174,6 +174,7 @@ func run(logger *slog.Logger) error {
 		if dryRun {
 			fmt.Printf("would create meeting with [%s] on [%s] in [%s]\n", localTitle, t, fullName)
 		} else {
+			fmt.Printf("creating meeting with [%s] on [%s] in [%s]\n", localTitle, t, fullName)
 			m, err := meeting.NewMeeting(meeting.WithTitle(localTitle))
 			if err != nil {
 				return err
