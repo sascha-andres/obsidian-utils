@@ -78,8 +78,14 @@ func run(_ context.Context) error {
 	if err != nil {
 		return err
 	}
+	line := ""
+	if strings.HasPrefix(bulletPoint, "[ ]") {
+		line = fmt.Sprintf("%s", bulletPoint)
+	} else {
+		line = fmt.Sprintf("(%s) %s", time.Now().Format("15:04"), bulletPoint)
+	}
 
-	newFileData, err := addBulletpoint(fileData, fmt.Sprintf("(%s) %s", time.Now().Format("15:04"), bulletPoint), headline)
+	newFileData, err := addBulletpoint(fileData, line, headline)
 	if err != nil {
 		logger.Error("could not add bullet point", "err", err, "file", resultingFile, "headline", headline)
 		return err
