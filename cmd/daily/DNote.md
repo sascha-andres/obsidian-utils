@@ -78,7 +78,7 @@ weight: 0
 group by function task.tags.length?task.tags.map((tag)=>(tag=="#task/todo"?"Me":(tag=="#task/work"?"Work":(tag=="#task/DMREG"?"Work":(tag=="#task/comm"?"Me":(tag=="#task/it"?"Work":(tag=="#task/bug"?"Dev":(tag=="#task/stream"?"Watched":(tag=="task/shopping"?"Buy":(tag=="#task/carmen"?"Carmen":(tag=="#task/dev"?"Dev":"Me"))))))))))):"Me"
 hide tags
 sort by urgency
-done "{{ .Current.DateOnly }}"
+((done "{{ .Current.DateOnly }}") OR (cancelled "{{ .Current.DateOnly }}"))
 ```
 
 ## New or changed items
