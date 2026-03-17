@@ -1,6 +1,11 @@
 package jrnl
 
-import "iter"
+import (
+	"fmt"
+	"iter"
+
+	"github.com/emersion/go-imap/v2/imapclient"
+)
 
 type (
 	Receiver struct {
@@ -12,6 +17,8 @@ type (
 
 		allowedSender             []string
 		deleteFromUnallowedSender bool
+
+		client *imapclient.Client
 	}
 
 	Mail struct {
@@ -33,11 +40,30 @@ func NewReceiver(server string, port int, user, password, mailbox string) Receiv
 
 // Start starts the receiver.
 // It connects to the IMAP server and authenticates the user.
-func (r *Receiver) Start() error {}
+func (r *Receiver) Start() error {
+	address := fmt.Sprintf("%s:%d", r.server, r.port)
+	c, err := imapclient.DialTLS(address, nil)
+	if err != nil {
+		return fmt.Errorf("connect to IMAP server: %w", err)
+	}
+
+	if err := c.Login(r.user, r.password).Wait(); err != nil {
+		_ = c.Logout().Wait()
+		return fmt.Errorf("authenticate: %w", err)
+	}
+
+	if _, err := c.Select(r.mailbox, nil).Wait(); err != nil {
+		_ = c.Logout().Wait()
+		return fmt.Errorf("select mailbox %q: %w", r.mailbox, err)
+	}
+
+	r.client = c
+	return nil
+}
 
 // Stop stops the receiver.
 // It disconnects from the IMAP server.
-func (r *Receiver) Stop() error {}
+func (r *Receiver) Stop() error { return nil }
 
 // GetMails returns a sequence of mails in the inbox.
 func (r *Receiver) GetMails() iter.Seq[Mail] {

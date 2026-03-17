@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/adrg/frontmatter v0.2.0
 	github.com/apognu/gocal v0.9.1
+	github.com/emersion/go-imap/v2 v2.0.0-beta.8
 	github.com/google/go-cmp v0.7.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/sascha-andres/reuse v0.14.2
@@ -21,6 +22,8 @@ require (
 	github.com/ChannelMeter/iso8601duration v0.0.0-20150204201828-8da3af7a2a61 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
+	github.com/emersion/go-message v0.18.2 // indirect
+	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
