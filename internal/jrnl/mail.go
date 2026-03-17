@@ -63,7 +63,14 @@ func (r *Receiver) Start() error {
 
 // Stop stops the receiver.
 // It disconnects from the IMAP server.
-func (r *Receiver) Stop() error { return nil }
+func (r *Receiver) Stop() error {
+	if r.client == nil {
+		return nil
+	}
+	err := r.client.Logout().Wait()
+	r.client = nil
+	return err
+}
 
 // GetMails returns a sequence of mails in the inbox.
 func (r *Receiver) GetMails() iter.Seq[Mail] {
