@@ -8,6 +8,7 @@ type (
 		port     int
 		user     string
 		password string
+		mailbox  string
 
 		allowedSender             []string
 		deleteFromUnallowedSender bool
@@ -20,12 +21,13 @@ type (
 )
 
 // NewReceiver creates a new receiver.
-func NewReceiver(server string, port int, user string, password string) Receiver {
+func NewReceiver(server string, port int, user, password, mailbox string) Receiver {
 	return Receiver{
 		server:   server,
 		port:     port,
 		user:     user,
 		password: password,
+		mailbox:  mailbox,
 	}
 }
 
