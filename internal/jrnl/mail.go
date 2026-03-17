@@ -3,6 +3,7 @@ package jrnl
 import (
 	"fmt"
 	"iter"
+	"strconv"
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
@@ -76,6 +77,24 @@ func (r *Receiver) Stop() error {
 	err := r.client.Logout().Wait()
 	r.client = nil
 	return err
+}
+
+// Move moves the given mail to the destination folder.
+func (r *Receiver) Move(m Mail, destination string) error {
+	if r.client == nil {
+		return fmt.Errorf("not connected")
+	}
+
+	uid, err := strconv.ParseUint(m.MailID, 10, 32)
+	if err != nil {
+		return fmt.Errorf("invalid mail ID %q: %w", m.MailID, err)
+	}
+
+	uidSet := imap.UIDSetNum(imap.UID(uid))
+	if _, err := r.client.Move(uidSet, destination).Wait(); err != nil {
+		return fmt.Errorf("move to %q: %w", destination, err)
+	}
+	return nil
 }
 
 // GetMails returns a sequence of mails in the inbox.
