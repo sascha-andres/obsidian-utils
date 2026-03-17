@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"iter"
 
+	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
 )
 
@@ -22,6 +23,7 @@ type (
 	}
 
 	Mail struct {
+		MailID  string
 		Subject string
 		Body    string
 	}
@@ -52,6 +54,10 @@ func (r *Receiver) Start() error {
 		return fmt.Errorf("authenticate: %w", err)
 	}
 
+	if r.mailbox == "" {
+		r.mailbox = "INBOX"
+	}
+
 	if _, err := c.Select(r.mailbox, nil).Wait(); err != nil {
 		_ = c.Logout().Wait()
 		return fmt.Errorf("select mailbox %q: %w", r.mailbox, err)
@@ -74,5 +80,56 @@ func (r *Receiver) Stop() error {
 
 // GetMails returns a sequence of mails in the inbox.
 func (r *Receiver) GetMails() iter.Seq[Mail] {
-	return nil
+	return func(yield func(Mail) bool) {
+		if r.client == nil {
+			return
+		}
+
+		var seqSet imap.SeqSet
+		seqSet.AddRange(1, 0) // 1:* — all messages
+
+		fetchOptions := &imap.FetchOptions{
+			UID:      true,
+			Envelope: true,
+			BodySection: []*imap.FetchItemBodySection{
+				{Specifier: imap.PartSpecifierText},
+			},
+		}
+
+		cmd := r.client.Fetch(seqSet, fetchOptions)
+		defer cmd.Close()
+
+		for {
+			msg := cmd.Next()
+			if msg == nil {
+				break
+			}
+
+			buf, err := msg.Collect()
+			if err != nil {
+				break
+			}
+
+			var subject string
+			if buf.Envelope != nil {
+				subject = buf.Envelope.Subject
+			}
+
+			var body string
+			if raw := buf.FindBodySection(&imap.FetchItemBodySection{Specifier: imap.PartSpecifierText}); raw != nil {
+				body = string(raw)
+			} else if len(buf.BodySection) > 0 {
+				body = string(buf.BodySection[0].Bytes)
+			}
+
+			m := Mail{
+				MailID:  fmt.Sprintf("%d", buf.UID),
+				Subject: subject,
+				Body:    body,
+			}
+			if !yield(m) {
+				return
+			}
+		}
+	}
 }
