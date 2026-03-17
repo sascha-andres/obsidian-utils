@@ -7,7 +7,7 @@ require (
 	github.com/apognu/gocal v0.9.1
 	github.com/google/go-cmp v0.7.0
 	github.com/manifoldco/promptui v0.9.0
-	github.com/sascha-andres/reuse v0.14.1
+	github.com/sascha-andres/reuse v0.14.2
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.271.0
 	gopkg.in/yaml.v2 v2.4.0

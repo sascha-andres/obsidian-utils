@@ -68,7 +68,7 @@ func run(_ context.Context) error {
 		return err
 	}
 
-	defaultEntry := strings.Join(flag.Args(), " ")
+	defaultEntry := strings.Join(flag.GetVerbs(), " ")
 	bulletPoint, err := internal.PromptText("Journal entry", defaultEntry, func(s string) error {
 		if len(s) == 0 {
 			return errors.New("journal entry cannot be empty")
