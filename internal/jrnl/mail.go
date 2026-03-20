@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"iter"
-	"strconv"
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapclient"
@@ -95,12 +94,20 @@ func (r *Receiver) Move(m Mail, destination string) error {
 		return fmt.Errorf("not connected")
 	}
 
-	uid, err := strconv.ParseUint(m.MailID, 10, 32)
+	criteria := &imap.SearchCriteria{
+		Header: []imap.SearchCriteriaHeaderField{
+			{Key: "Message-ID", Value: m.MailID},
+		},
+	}
+	searchData, err := r.client.UIDSearch(criteria, nil).Wait()
 	if err != nil {
-		return fmt.Errorf("invalid mail ID %q: %w", m.MailID, err)
+		return fmt.Errorf("search for message %q: %w", m.MailID, err)
+	}
+	if len(searchData.AllUIDs()) == 0 {
+		return fmt.Errorf("message %q not found", m.MailID)
 	}
 
-	uidSet := imap.UIDSetNum(imap.UID(uid))
+	uidSet := imap.UIDSetNum(searchData.AllUIDs()...)
 	if _, err := r.client.Move(uidSet, destination).Wait(); err != nil {
 		return fmt.Errorf("move to %q: %w", destination, err)
 	}
