@@ -49,6 +49,8 @@ func run(_ context.Context) error {
 	logger := internal.CreateLogger("OBS_UTIL_DAILY", logLevel)
 
 	logger.Debug("start adding a journal note")
+	defer logger.Debug("journal note added")
+
 	dailyNoteFolder, err := constructFolder()
 	if err != nil {
 		return err

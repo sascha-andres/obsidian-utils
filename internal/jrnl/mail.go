@@ -1,6 +1,7 @@
 package jrnl
 
 import (
+	"encoding/json"
 	"fmt"
 	"iter"
 	"strconv"
@@ -24,15 +25,24 @@ type (
 	}
 
 	Mail struct {
-		MailID  string
-		Subject string
-		Body    string
+		MailID   string
+		Receiver string
+		Subject  string
+		Body     string
 	}
 )
 
+func (m *Mail) String() string {
+	d, err := json.Marshal(m)
+	if err != nil {
+		return err.Error()
+	}
+	return string(d)
+}
+
 // NewReceiver creates a new receiver.
-func NewReceiver(server string, port int, user, password, mailbox string) Receiver {
-	return Receiver{
+func NewReceiver(server string, port int, user, password, mailbox string) *Receiver {
+	return &Receiver{
 		server:   server,
 		port:     port,
 		user:     user,
@@ -142,9 +152,10 @@ func (r *Receiver) GetMails() iter.Seq[Mail] {
 			}
 
 			m := Mail{
-				MailID:  fmt.Sprintf("%d", buf.UID),
-				Subject: subject,
-				Body:    body,
+				MailID:   buf.Envelope.MessageID,
+				Subject:  subject,
+				Body:     body,
+				Receiver: buf.Envelope.To[0].Mailbox + "@" + buf.Envelope.To[0].Host,
 			}
 			if !yield(m) {
 				return
