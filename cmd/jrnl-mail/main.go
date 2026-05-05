@@ -21,7 +21,7 @@ var (
 
 	server, user, password, mailbox string
 	port                            int
-	recipients                      string
+	recipients, sender              string
 )
 
 func init() {
@@ -40,6 +40,7 @@ func init() {
 	flag.StringVar(&password, "password", "", "password")
 	flag.StringVar(&mailbox, "mailbox", "", "mailbox")
 	flag.StringVar(&recipients, "recipients", "jrnl@mailbox.org", "recipients")
+	flag.StringVar(&sender, "sender", "", "sender")
 }
 
 func main() {
