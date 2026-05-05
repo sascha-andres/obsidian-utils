@@ -58,6 +58,8 @@ weight: 0
 
 ## Work
 
+## Stadtrat
+
 ## Health
 
 ### Food & beverages
