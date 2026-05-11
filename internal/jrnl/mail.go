@@ -40,14 +40,29 @@ func (m *Mail) String() string {
 }
 
 // NewReceiver creates a new receiver.
-func NewReceiver(server string, port int, user, password, mailbox string) *Receiver {
+func NewReceiver(server string, port int, user, password, mailbox string) (*Receiver, error) {
+	if server == "" {
+		return nil, fmt.Errorf("server is required")
+	}
+	if user == "" {
+		return nil, fmt.Errorf("user is required")
+	}
+	if password == "" {
+		return nil, fmt.Errorf("password is required")
+	}
+	if mailbox == "" {
+		return nil, fmt.Errorf("mailbox is required")
+	}
+	if port < 1 || port > 65535 {
+		return nil, fmt.Errorf("port must be between 1 and 65535")
+	}
 	return &Receiver{
 		server:   server,
 		port:     port,
 		user:     user,
 		password: password,
 		mailbox:  mailbox,
-	}
+	}, nil
 }
 
 // Start starts the receiver.
