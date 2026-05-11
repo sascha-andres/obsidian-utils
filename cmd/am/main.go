@@ -42,6 +42,7 @@ func init() {
 // main is the entry point of the program.
 func main() {
 	flag.Parse()
+	internal.PrintFlags()
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_AM")
 
 	if err := run(logger); err != nil {

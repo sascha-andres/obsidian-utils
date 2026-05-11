@@ -37,6 +37,7 @@ func init() {
 
 func main() {
 	flag.Parse()
+	internal.PrintFlags()
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_FM")
 	if err := run(logger); err != nil {
 		logger.Error("could not execute utility", "err", err)

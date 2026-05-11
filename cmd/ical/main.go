@@ -39,6 +39,7 @@ func init() {
 
 func main() {
 	flag.Parse()
+	internal.PrintFlags()
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_ICAL")
 	if err := run(logger); err != nil {
 		logger.Error("error running application", "err", err)

@@ -87,6 +87,8 @@ func init() {
 // main is the entry point of the program.
 func main() {
 	flag.Parse()
+	internal.PrintFlags()
+
 	logger := internal.CreateLogger("OBS_UTIL_DAILY", logLevel)
 	if err := run(logger); err != nil {
 		logger.Error("error running daily", "err", err)
@@ -120,6 +122,7 @@ func run(logger *slog.Logger) error {
 		forDate = time.Now().AddDate(0, 0, offset*-1).Format(time.DateOnly)
 	}
 	if strings.HasPrefix(forDate, "+") {
+		logger.Info("creating daily note for relative date", "for-date", forDate)
 		relativeString := strings.TrimPrefix(forDate, "+")
 		offset, err := strconv.Atoi(relativeString)
 		if err != nil {
@@ -131,8 +134,8 @@ func run(logger *slog.Logger) error {
 	folder = path.Join(folder, dailyFolder)
 
 	if printConfig {
-		fmt.Printf("daily notes folder: %q", folder)
-		fmt.Printf("for-date: %q", forDate)
+		logger.Info("daily notes folder", "folder", folder)
+		logger.Info("for-date", "for-date", forDate)
 		return nil
 	}
 

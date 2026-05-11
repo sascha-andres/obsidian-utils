@@ -44,6 +44,8 @@ func main() {
 
 func run(_ context.Context) error {
 	flag.Parse()
+	internal.PrintFlags()
+	fmt.Printf("--- %#v", os.Args)
 
 	logger := internal.CreateLogger("OBS_UTIL_DAILY", logLevel)
 
