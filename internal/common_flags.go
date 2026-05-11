@@ -1,6 +1,11 @@
 package internal
 
-import "github.com/sascha-andres/reuse/flag"
+import (
+	stdflag "flag"
+	"fmt"
+
+	"github.com/sascha-andres/reuse/flag"
+)
 
 const commonFlagPrefix = "OBS_UTIL"
 
@@ -10,4 +15,11 @@ func AddCommonFlagPrefixes() {
 	flag.SetEnvPrefixForFlag("folder", commonFlagPrefix)
 	flag.SetEnvPrefixForFlag("print-config", commonFlagPrefix)
 	flag.SetEnvPrefixForFlag("log-level", commonFlagPrefix)
+}
+
+// PrintFlags prints all parsed flags and their values.
+func PrintFlags() {
+	flag.VisitAll(func(f *stdflag.Flag) {
+		fmt.Printf("%s=%s\n", f.Name, f.Value.String())
+	})
 }
