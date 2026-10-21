@@ -91,7 +91,7 @@ func main() {
 	flag.Parse()
 	internal.PrintFlags()
 
-	logger := internal.CreateLogger("OBS_UTIL_DAILY", logLevel)
+	logger := internal.CreateLogger(logLevel, "OBS_UTIL_DAILY")
 	if err := run(logger); err != nil {
 		logger.Error("error running daily", "err", err)
 		os.Exit(1)

@@ -24,6 +24,10 @@ The Google Contacts Exporter utility exports Google contacts and contact groups 
 
 The Obsidian Frontmatter Editor utility modifies frontmatter in Obsidian notes. It can set string, integer, or float values for specified keys in the frontmatter, which is useful for scripting or automating changes to note metadata.
 
+### [Apple Health Importer (obs-from-apple)](cmd/obs-from-apple/README.md)
+
+The Apple Health Importer utility reads an Apple Health export and writes steps and sleep minutes into existing daily notes. It only writes values that are missing or 0.
+
 ### [iCal Importer (ical)](cmd/ical/README.md)
 
 The iCal Importer utility creates meeting notes in Obsidian from an iCal file. It reads events from the specified iCal file, filters out past events, and creates a markdown file for each future event using a predefined template.

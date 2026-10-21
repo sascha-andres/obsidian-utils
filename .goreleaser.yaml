@@ -84,6 +84,17 @@ builds:
     goarch:
       - amd64
       - arm64
+  - id: obs-from-apple
+    main: ./cmd/obs-from-apple
+    binary: obs-from-apple
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
 
 archives:
   - name_template: >-
@@ -114,8 +125,9 @@ brews:
       bin.install "ical"
       bin.install "jrnl"
       bin.install "obs-fm"
+      bin.install "obs-from-apple"
     test: |
-      %w[am backfill daily ggl ical jrnl obs-fm].each do |b|
+      %w[am backfill daily ggl ical jrnl obs-fm obs-from-apple].each do |b|
         assert_predicate bin/b, :exist?
       end
 
