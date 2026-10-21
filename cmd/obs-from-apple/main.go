@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"maps"
 	"math"
@@ -116,21 +115,6 @@ func run(logger *slog.Logger) error {
 		if day < startDateFlag || day > lastDay {
 			continue
 		}
-		t, err := time.Parse(time.DateOnly, day)
-		if err != nil {
-			return err
-		}
-		notePath := path.Join(resolvedFolder, dailyFolder, fmt.Sprintf("%s.md", t.Format("2006/01/2006-01-02")))
-		exists, err := internal.Exists(notePath)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			logger.Debug("daily note does not exist, skipping", "file", notePath)
-			continue
-		}
-		scanned++
-
 		values := map[string]any{}
 		if steps, ok := data.steps.max(day); ok {
 			values[stepsKey] = int(math.Round(steps))
@@ -138,9 +122,12 @@ func run(logger *slog.Logger) error {
 		if sleep, ok := data.sleep.max(day); ok {
 			values[sleepKey] = int(math.Round(sleep))
 		}
-		changed, err := updateNote(logger, notePath, values)
+		found, changed, err := internal.FillDailyNote(logger, path.Join(resolvedFolder, dailyFolder), day, values, dryRun)
 		if err != nil {
 			return err
+		}
+		if found {
+			scanned++
 		}
 		if changed {
 			updated++
@@ -149,34 +136,4 @@ func run(logger *slog.Logger) error {
 
 	logger.Info("done importing apple health data", "scanned", scanned, "updated", updated, "dry-run", dryRun)
 	return nil
-}
-
-// updateNote sets each value whose key is missing or zero in the note's frontmatter. It reports whether the note changed.
-func updateNote(logger *slog.Logger, notePath string, values map[string]any) (bool, error) {
-	processor := obsidianutils.NewSimpleFrontmatterProcessor(notePath)
-	changed := false
-	for key, value := range values {
-		old, getErr := processor.GetValue(key)
-		isZero, ok := internal.IsZeroValue(old, getErr == nil)
-		if !ok {
-			logger.Warn("could not interpret value, skipping", "file", notePath, "key", key, "value", old)
-			continue
-		}
-		if !isZero {
-			continue
-		}
-		logger.Debug("setting value", "file", notePath, "key", key, "old", old, "new", value)
-		if err := processor.SetValue(key, value); err != nil {
-			return false, err
-		}
-		changed = true
-	}
-	if !changed || dryRun {
-		return changed, nil
-	}
-	doc, err := processor.GenerateMarkDownDocument()
-	if err != nil {
-		return false, err
-	}
-	return true, os.WriteFile(notePath, doc, 0600)
 }
