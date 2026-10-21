@@ -75,8 +75,8 @@ func (s sleepSegments) add(day, source string, segment interval) {
 	s[day][source] = append(s[day][source], segment)
 }
 
-// hours sums the hours per day per source. Time that segments of one source share counts one time only, because a source can contain copies of segments of other sources.
-func (s sleepSegments) hours() dailyValues {
+// minutes sums the minutes per day per source. Time that segments of one source share counts one time only, because a source can contain copies of segments of other sources.
+func (s sleepSegments) minutes() dailyValues {
 	result := dailyValues{}
 	for day, sources := range s {
 		for source, segments := range sources {
@@ -88,7 +88,7 @@ func (s sleepSegments) hours() dailyValues {
 					start = covered
 				}
 				if segment.end.After(start) {
-					result.add(day, source, segment.end.Sub(start).Hours())
+					result.add(day, source, segment.end.Sub(start).Minutes())
 					covered = segment.end
 				}
 			}
@@ -137,7 +137,7 @@ func (z zipEntry) Close() error {
 	return errors.Join(z.ReadCloser.Close(), z.archive.Close())
 }
 
-// readHealthData streams export.xml and aggregates steps and sleep hours per day.
+// readHealthData streams export.xml and aggregates steps and sleep minutes per day.
 func readHealthData(r io.Reader) (healthData, error) {
 	data := healthData{steps: dailyValues{}}
 	sleep := sleepSegments{}
@@ -145,7 +145,7 @@ func readHealthData(r io.Reader) (healthData, error) {
 	for {
 		token, err := decoder.Token()
 		if errors.Is(err, io.EOF) {
-			data.sleep = sleep.hours()
+			data.sleep = sleep.minutes()
 			return data, nil
 		}
 		if err != nil {

@@ -46,7 +46,7 @@ func TestReadHealthData(t *testing.T) {
 		{"steps max of sources", data.steps, "2026-10-20", 1500, true},
 		{"steps next day", data.steps, "2026-10-21", 42, true},
 		{"steps missing day", data.steps, "2026-10-19", 0, false},
-		{"sleep on wake-up day without awake and in bed", data.sleep, "2026-10-21", 7.5, true},
+		{"sleep on wake-up day without awake and in bed", data.sleep, "2026-10-21", 450, true},
 		{"no sleep on bed day", data.sleep, "2026-10-20", 0, false},
 	}
 	for _, tt := range tests {

@@ -34,7 +34,7 @@ func init() {
 	flag.StringVar(&startDateFlag, "start-date", "", "lowest date to import (2006-01-02), empty for no limit")
 	flag.StringVar(&untilFlag, "until", "", "highest date to import (2006-01-02), empty for yesterday")
 	flag.StringVar(&stepsKey, "steps-key", "steps", "frontmatter key for steps")
-	flag.StringVar(&sleepKey, "sleep-key", "sleep", "frontmatter key for sleep hours")
+	flag.StringVar(&sleepKey, "sleep-key", "sleep", "frontmatter key for sleep minutes")
 	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
 	flag.BoolVar(&dryRun, "dry-run", false, "do not write files, only log what would change")
 }
@@ -51,7 +51,7 @@ func main() {
 	}
 }
 
-// run reads the apple health export and writes steps and sleep hours to daily notes that have no value yet.
+// run reads the apple health export and writes steps and sleep minutes to daily notes that have no value yet.
 func run(logger *slog.Logger) error {
 	if folder == "" {
 		return errors.New("-folder must be non empty")
@@ -136,7 +136,7 @@ func run(logger *slog.Logger) error {
 			values[stepsKey] = int(math.Round(steps))
 		}
 		if sleep, ok := data.sleep.max(day); ok {
-			values[sleepKey] = math.Round(sleep*100) / 100
+			values[sleepKey] = int(math.Round(sleep))
 		}
 		changed, err := updateNote(logger, notePath, values)
 		if err != nil {

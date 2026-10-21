@@ -26,7 +26,7 @@ The Obsidian Frontmatter Editor utility modifies frontmatter in Obsidian notes. 
 
 ### [Apple Health Importer (obs-from-apple)](cmd/obs-from-apple/README.md)
 
-The Apple Health Importer utility reads an Apple Health export and writes steps and sleep hours into existing daily notes. It only writes values that are missing or 0.
+The Apple Health Importer utility reads an Apple Health export and writes steps and sleep minutes into existing daily notes. It only writes values that are missing or 0.
 
 ### [iCal Importer (ical)](cmd/ical/README.md)
 
