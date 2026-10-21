@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -58,6 +59,44 @@ func (d dailyValues) max(day string) (float64, bool) {
 	return result, true
 }
 
+// interval is a time span of a sleep segment.
+type interval struct {
+	start, end time.Time
+}
+
+// sleepSegments holds the sleep segments per day (2006-01-02) per source.
+type sleepSegments map[string]map[string][]interval
+
+// add adds a segment of source to day.
+func (s sleepSegments) add(day, source string, segment interval) {
+	if s[day] == nil {
+		s[day] = map[string][]interval{}
+	}
+	s[day][source] = append(s[day][source], segment)
+}
+
+// hours sums the hours per day per source. Time that segments of one source share counts one time only, because a source can contain copies of segments of other sources.
+func (s sleepSegments) hours() dailyValues {
+	result := dailyValues{}
+	for day, sources := range s {
+		for source, segments := range sources {
+			slices.SortFunc(segments, func(a, b interval) int { return a.start.Compare(b.start) })
+			var covered time.Time
+			for _, segment := range segments {
+				start := segment.start
+				if start.Before(covered) {
+					start = covered
+				}
+				if segment.end.After(start) {
+					result.add(day, source, segment.end.Sub(start).Hours())
+					covered = segment.end
+				}
+			}
+		}
+	}
+	return result
+}
+
 // healthData contains the aggregated daily values read from an export.
 type healthData struct {
 	steps dailyValues
@@ -100,11 +139,13 @@ func (z zipEntry) Close() error {
 
 // readHealthData streams export.xml and aggregates steps and sleep hours per day.
 func readHealthData(r io.Reader) (healthData, error) {
-	data := healthData{steps: dailyValues{}, sleep: dailyValues{}}
+	data := healthData{steps: dailyValues{}}
+	sleep := sleepSegments{}
 	decoder := xml.NewDecoder(r)
 	for {
 		token, err := decoder.Token()
 		if errors.Is(err, io.EOF) {
+			data.sleep = sleep.hours()
 			return data, nil
 		}
 		if err != nil {
@@ -124,7 +165,7 @@ func readHealthData(r io.Reader) (healthData, error) {
 				return data, err
 			}
 		case recordTypeSleep:
-			if err := addSleep(data.sleep, attributes); err != nil {
+			if err := addSleep(sleep, attributes); err != nil {
 				return data, err
 			}
 		}
@@ -145,8 +186,8 @@ func addSteps(steps dailyValues, attributes map[string]string) error {
 	return nil
 }
 
-// addSleep adds the hours of an asleep record to its wake-up day.
-func addSleep(sleep dailyValues, attributes map[string]string) error {
+// addSleep adds an asleep record to its wake-up day.
+func addSleep(sleep sleepSegments, attributes map[string]string) error {
 	if !asleepValues[attributes["value"]] {
 		return nil
 	}
@@ -158,6 +199,6 @@ func addSleep(sleep dailyValues, attributes map[string]string) error {
 	if err != nil {
 		return err
 	}
-	sleep.add(end.Add(sleepDayShift).Format(time.DateOnly), attributes["sourceName"], end.Sub(start).Hours())
+	sleep.add(end.Add(sleepDayShift).Format(time.DateOnly), attributes["sourceName"], interval{start: start, end: end})
 	return nil
 }

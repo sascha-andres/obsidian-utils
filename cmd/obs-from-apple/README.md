@@ -9,7 +9,7 @@ The utility reads the "Export All Health Data" file of the Apple Health app. It 
 The utility only writes a value if the key is missing or `0`. It does not change other values. It does not create daily notes and it does not change today's note, because the data of today is not complete.
 
 - **Steps**: `HKQuantityTypeIdentifierStepCount`. The steps are summed per source (for example iPhone, Apple Watch). The source with the highest total is used, because the sources record the same steps. Stored as an integer.
-- **Sleep hours**: `HKCategoryTypeIdentifierSleepAnalysis` with the stages Core, Deep, REM and Unspecified. InBed and Awake do not count. The hours are summed per source and the source with the highest total is used. A night belongs to the wake-up day (sleep that ends between 18:00 of the previous day and 18:00 counts for that day). Stored as a float with 2 decimals.
+- **Sleep hours**: `HKCategoryTypeIdentifierSleepAnalysis` with the stages Core, Deep, REM and Unspecified. InBed and Awake do not count. The hours are summed per source, and time that segments of one source share counts one time only. The source with the highest total is used. A night belongs to the wake-up day (sleep that ends between 18:00 of the previous day and 18:00 counts for that day). Stored as a float with 2 decimals.
 
 The Apple Health export does not contain a sleep score.
 

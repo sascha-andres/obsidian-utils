@@ -26,6 +26,8 @@ const sampleExport = `<?xml version="1.0" encoding="UTF-8"?>
  <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Watch" startDate="2026-10-21 00:15:00 +0200" endDate="2026-10-21 06:30:00 +0200" value="HKCategoryValueSleepAnalysisAsleepDeep"/>
  <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Watch" startDate="2026-10-20 22:00:00 +0200" endDate="2026-10-21 07:00:00 +0200" value="HKCategoryValueSleepAnalysisInBed"/>
  <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Band" startDate="2026-10-20 23:00:00 +0200" endDate="2026-10-21 06:00:00 +0200" value="HKCategoryValueSleepAnalysisAsleepCore"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Band" startDate="2026-10-20 22:30:00 +0200" endDate="2026-10-20 23:45:00 +0200" value="HKCategoryValueSleepAnalysisAsleepCore"/>
+ <Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Band" startDate="2026-10-21 01:00:00 +0200" endDate="2026-10-21 02:00:00 +0200" value="HKCategoryValueSleepAnalysisAsleepDeep"/>
 </HealthData>
 `
 
