@@ -1,4 +1,4 @@
-package main
+package internal
 
 import "testing"
 
@@ -25,12 +25,12 @@ func TestIsZeroValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotIsZero, gotOk := isZeroValue(tt.value, tt.present)
+			gotIsZero, gotOk := IsZeroValue(tt.value, tt.present)
 			if gotOk != tt.wantOk {
-				t.Fatalf("isZeroValue(%v, %v) ok = %v, want %v", tt.value, tt.present, gotOk, tt.wantOk)
+				t.Fatalf("IsZeroValue(%v, %v) ok = %v, want %v", tt.value, tt.present, gotOk, tt.wantOk)
 			}
 			if gotOk && gotIsZero != tt.wantIsZero {
-				t.Fatalf("isZeroValue(%v, %v) isZero = %v, want %v", tt.value, tt.present, gotIsZero, tt.wantIsZero)
+				t.Fatalf("IsZeroValue(%v, %v) isZero = %v, want %v", tt.value, tt.present, gotIsZero, tt.wantIsZero)
 			}
 		})
 	}
