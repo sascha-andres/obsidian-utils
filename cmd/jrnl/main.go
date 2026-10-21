@@ -47,7 +47,7 @@ func run(_ context.Context) error {
 	internal.PrintFlags()
 	fmt.Printf("--- %#v", os.Args)
 
-	logger := internal.CreateLogger("OBS_UTIL_DAILY", logLevel)
+	logger := internal.CreateLogger(logLevel, "OBS_UTIL_JRNL")
 
 	logger.Debug("start adding a journal note")
 	dailyNoteFolder, err := constructFolder()
