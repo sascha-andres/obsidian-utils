@@ -1,6 +1,7 @@
 package main
 
 import (
+	"maps"
 	"strings"
 	"testing"
 	"time"
@@ -18,37 +19,38 @@ func TestReadWorkTime(t *testing.T) {
 		name     string
 		projects map[string]bool
 		want     map[string]time.Duration
+		other    map[string]time.Duration
 	}{
 		{
 			name:     "project filter and split at midnight",
 			projects: map[string]bool{"IQ": true},
 			want:     map[string]time.Duration{"2026-10-20": 2*time.Hour + 29*time.Second, "2026-10-21": 30 * time.Minute},
+			other:    map[string]time.Duration{"2026-10-20": 2 * time.Hour},
 		},
 		{
-			name: "no filter",
-			want: map[string]time.Duration{"2026-10-20": 4*time.Hour + 29*time.Second, "2026-10-21": 30 * time.Minute},
+			name:  "no filter",
+			want:  map[string]time.Duration{"2026-10-20": 4*time.Hour + 29*time.Second, "2026-10-21": 30 * time.Minute},
+			other: map[string]time.Duration{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := readWorkTime(strings.NewReader(sampleReport), tt.projects)
+			got, gotOther, err := readWorkTime(strings.NewReader(sampleReport), tt.projects)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(got) != len(tt.want) {
-				t.Fatalf("readWorkTime() = %v, want %v", got, tt.want)
+			if !maps.Equal(got, tt.want) {
+				t.Fatalf("readWorkTime() work = %v, want %v", got, tt.want)
 			}
-			for day, want := range tt.want {
-				if got[day] != want {
-					t.Fatalf("readWorkTime()[%s] = %v, want %v", day, got[day], want)
-				}
+			if !maps.Equal(gotOther, tt.other) {
+				t.Fatalf("readWorkTime() other = %v, want %v", gotOther, tt.other)
 			}
 		})
 	}
 }
 
 func TestReadWorkTimeMissingColumn(t *testing.T) {
-	if _, err := readWorkTime(strings.NewReader("\"Project\",\"Start date\"\n"), nil); err == nil {
+	if _, _, err := readWorkTime(strings.NewReader("\"Project\",\"Start date\"\n"), nil); err == nil {
 		t.Fatal("readWorkTime() without stop columns must fail")
 	}
 }

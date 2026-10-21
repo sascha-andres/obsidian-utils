@@ -18,9 +18,9 @@ import (
 )
 
 var (
-	folder, dailyFolder, logLevel, reportPath       string
-	startDateFlag, untilFlag, workTimeKey, projects string
-	printConfig, dryRun                             bool
+	folder, dailyFolder, logLevel, reportPath                     string
+	startDateFlag, untilFlag, workTimeKey, projects, otherTimeKey string
+	printConfig, dryRun                                           bool
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
@@ -35,6 +35,7 @@ func init() {
 	flag.StringVar(&startDateFlag, "start-date", "", "lowest date to import (2006-01-02), empty for no limit")
 	flag.StringVar(&untilFlag, "until", "", "highest date to import (2006-01-02), empty for yesterday")
 	flag.StringVar(&workTimeKey, "work-time-key", "work time", "frontmatter key for work time in minutes")
+	flag.StringVar(&otherTimeKey, "other-time-key", "other time", "frontmatter key for time in minutes of projects not in -project, empty to skip")
 	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
 	flag.BoolVar(&dryRun, "dry-run", false, "do not write files, only log what would change")
 }
@@ -95,7 +96,7 @@ func run(logger *slog.Logger) error {
 		logger.Info("report", "report", reportPath)
 		logger.Info("projects", "projects", slices.Sorted(maps.Keys(includedProjects)))
 		logger.Info("range", "start-date", startDateFlag, "until", lastDay)
-		logger.Info("keys", "work-time-key", workTimeKey)
+		logger.Info("keys", "work-time-key", workTimeKey, "other-time-key", otherTimeKey)
 		return nil
 	}
 
@@ -104,17 +105,27 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer report.Close()
-	workTime, err := readWorkTime(report, includedProjects)
+	workTime, otherTime, err := readWorkTime(report, includedProjects)
 	if err != nil {
 		return err
 	}
+	days := maps.Clone(workTime)
+	if otherTimeKey != "" {
+		maps.Copy(days, otherTime)
+	}
 
 	var scanned, updated int
-	for _, day := range slices.Sorted(maps.Keys(workTime)) {
+	for _, day := range slices.Sorted(maps.Keys(days)) {
 		if day < startDateFlag || day > lastDay {
 			continue
 		}
-		values := map[string]any{workTimeKey: int(math.Round(workTime[day].Minutes()))}
+		values := map[string]any{}
+		if work, ok := workTime[day]; ok {
+			values[workTimeKey] = int(math.Round(work.Minutes()))
+		}
+		if otherTimeKey != "" {
+			values[otherTimeKey] = int(math.Round(otherTime[day].Minutes()))
+		}
 		found, changed, err := internal.FillDailyNote(logger, path.Join(resolvedFolder, dailyFolder), day, values, dryRun)
 		if err != nil {
 			return err
