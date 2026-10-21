@@ -28,6 +28,10 @@ The Obsidian Frontmatter Editor utility modifies frontmatter in Obsidian notes. 
 
 The Apple Health Importer utility reads an Apple Health export and writes steps and sleep minutes into existing daily notes. It only writes values that are missing or 0.
 
+### [Toggl Importer (obs-from-toggl)](cmd/obs-from-toggl/README.md)
+
+The Toggl Importer utility reads a Toggl Track detailed report (CSV) and writes the work time in minutes into existing daily notes. It only writes values that are missing or 0.
+
 ### [iCal Importer (ical)](cmd/ical/README.md)
 
 The iCal Importer utility creates meeting notes in Obsidian from an iCal file. It reads events from the specified iCal file, filters out past events, and creates a markdown file for each future event using a predefined template.
