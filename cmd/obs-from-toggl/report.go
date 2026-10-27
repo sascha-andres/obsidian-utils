@@ -12,9 +12,9 @@ import (
 const togglDateTimeLayout = time.DateOnly + " " + time.TimeOnly
 
 // readWorkTime reads a toggl detailed csv report and sums the time per day (2006-01-02).
-// work contains the time of entries of a project in projects, other the time of all other entries.
-// If projects is empty, all entries count as work. An entry that crosses midnight is split between the days.
-func readWorkTime(r io.Reader, projects map[string]bool) (work, other map[string]time.Duration, err error) {
+// work contains the time of entries of a project in projects or a client in clients, other the time of all other entries.
+// If projects and clients are empty, all entries count as work. An entry that crosses midnight is split between the days.
+func readWorkTime(r io.Reader, projects, clients map[string]bool) (work, other map[string]time.Duration, err error) {
 	// toggl writes a byte order mark, which encoding/csv does not accept before a quote
 	buffered := bufio.NewReader(r)
 	if bom, err := buffered.Peek(3); err == nil && string(bom) == "\ufeff" {
@@ -29,7 +29,11 @@ func readWorkTime(r io.Reader, projects map[string]bool) (work, other map[string
 	for i, name := range header {
 		columns[name] = i
 	}
-	for _, name := range []string{"Project", "Start date", "Start time", "Stop date", "Stop time"} {
+	required := []string{"Project", "Start date", "Start time", "Stop date", "Stop time"}
+	if len(clients) > 0 {
+		required = append(required, "Client")
+	}
+	for _, name := range required {
 		if _, ok := columns[name]; !ok {
 			return nil, nil, fmt.Errorf("column %q not in report", name)
 		}
@@ -45,7 +49,8 @@ func readWorkTime(r io.Reader, projects map[string]bool) (work, other map[string
 			return nil, nil, err
 		}
 		result := work
-		if len(projects) > 0 && !projects[record[columns["Project"]]] {
+		if len(projects)+len(clients) > 0 && !projects[record[columns["Project"]]] &&
+			(len(clients) == 0 || !clients[record[columns["Client"]]]) {
 			result = other
 		}
 		// the report has no time zone, toggl uses the time zone of the user

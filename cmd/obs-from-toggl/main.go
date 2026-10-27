@@ -18,9 +18,9 @@ import (
 )
 
 var (
-	folder, dailyFolder, logLevel, reportPath                     string
-	startDateFlag, untilFlag, workTimeKey, projects, otherTimeKey string
-	printConfig, dryRun                                           bool
+	folder, dailyFolder, logLevel, reportPath                              string
+	startDateFlag, untilFlag, workTimeKey, projects, clients, otherTimeKey string
+	printConfig, dryRun                                                    bool
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
@@ -31,11 +31,12 @@ func init() {
 	flag.StringVar(&folder, "folder", "", "base path to obsidian vault")
 	flag.StringVar(&dailyFolder, "daily-folder", "", "where the daily notes are stored inside the vault")
 	flag.StringVar(&reportPath, "report", "", "path to toggl detailed report (csv)")
-	flag.StringVar(&projects, "project", "IQ", "comma separated list of projects to include, empty for all")
+	flag.StringVar(&projects, "project", "", "comma separated list of projects to include")
+	flag.StringVar(&clients, "client", "", "comma separated list of clients to include")
 	flag.StringVar(&startDateFlag, "start-date", "", "lowest date to import (2006-01-02), empty for no limit")
 	flag.StringVar(&untilFlag, "until", "", "highest date to import (2006-01-02), empty for yesterday")
 	flag.StringVar(&workTimeKey, "work-time-key", "work time", "frontmatter key for work time in minutes")
-	flag.StringVar(&otherTimeKey, "other-time-key", "other time", "frontmatter key for time in minutes of projects not in -project, empty to skip")
+	flag.StringVar(&otherTimeKey, "other-time-key", "other time", "frontmatter key for time in minutes of entries that do not count as work, empty to skip")
 	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
 	flag.BoolVar(&dryRun, "dry-run", false, "do not write files, only log what would change")
 }
@@ -83,18 +84,14 @@ func run(logger *slog.Logger) error {
 			return err
 		}
 	}
-	includedProjects := map[string]bool{}
-	for _, project := range strings.Split(projects, ",") {
-		if project = strings.TrimSpace(project); project != "" {
-			includedProjects[project] = true
-		}
-	}
+	includedProjects, includedClients := splitList(projects), splitList(clients)
 
 	if printConfig {
 		logger.Info("folder", "folder", resolvedFolder)
 		logger.Info("daily-folder", "daily-folder", dailyFolder)
 		logger.Info("report", "report", reportPath)
 		logger.Info("projects", "projects", slices.Sorted(maps.Keys(includedProjects)))
+		logger.Info("clients", "clients", slices.Sorted(maps.Keys(includedClients)))
 		logger.Info("range", "start-date", startDateFlag, "until", lastDay)
 		logger.Info("keys", "work-time-key", workTimeKey, "other-time-key", otherTimeKey)
 		return nil
@@ -105,7 +102,7 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer report.Close()
-	workTime, otherTime, err := readWorkTime(report, includedProjects)
+	workTime, otherTime, err := readWorkTime(report, includedProjects, includedClients)
 	if err != nil {
 		return err
 	}
@@ -140,4 +137,15 @@ func run(logger *slog.Logger) error {
 
 	logger.Info("done importing toggl work time", "scanned", scanned, "updated", updated, "dry-run", dryRun)
 	return nil
+}
+
+// splitList returns the non empty, trimmed values of a comma separated list as a set.
+func splitList(list string) map[string]bool {
+	result := map[string]bool{}
+	for _, value := range strings.Split(list, ",") {
+		if value = strings.TrimSpace(value); value != "" {
+			result[value] = true
+		}
+	}
+	return result
 }
