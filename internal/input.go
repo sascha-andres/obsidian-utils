@@ -13,3 +13,13 @@ func PromptText(label, defaultValue string, val func(string) error) (string, err
 	}
 	return prompt.Run()
 }
+
+// PromptSelect lets the user select one of items
+func PromptSelect(label string, items []string) (string, error) {
+	prompt := promptui.Select{
+		Label: label,
+		Items: items,
+	}
+	_, result, err := prompt.Run()
+	return result, err
+}

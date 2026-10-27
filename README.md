@@ -28,9 +28,9 @@ The Obsidian Frontmatter Editor utility modifies frontmatter in Obsidian notes. 
 
 The Apple Health Importer utility reads an Apple Health export and writes steps and sleep minutes into existing daily notes. It only writes values that are missing or 0.
 
-### [Toggl Importer (obs-from-toggl)](cmd/obs-from-toggl/README.md)
+### [Timesheet Importer (obs-from-timesheet)](cmd/obs-from-timesheet/README.md)
 
-The Toggl Importer utility reads a Toggl Track detailed report (CSV) and writes the work time in minutes into existing daily notes. It only writes values that are missing or 0.
+The Timesheet Importer utility reads a Toggl Track detailed report or a timenote report (CSV) and writes the work time in minutes into existing daily notes. It only writes values that are missing or 0.
 
 ### [iCal Importer (ical)](cmd/ical/README.md)
 

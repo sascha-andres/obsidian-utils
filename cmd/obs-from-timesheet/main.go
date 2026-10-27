@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"maps"
 	"math"
@@ -20,17 +21,19 @@ import (
 var (
 	folder, dailyFolder, logLevel, reportPath                              string
 	startDateFlag, untilFlag, workTimeKey, projects, clients, otherTimeKey string
+	sourceType                                                             string
 	printConfig, dryRun                                                    bool
 )
 
 // init initializes the package by setting up flag options, log flags, and prefix.
 func init() {
 	internal.AddCommonFlagPrefixes()
-	flag.SetEnvPrefix("OBS_UTIL_FROM_TOGGL")
+	flag.SetEnvPrefix("OBS_UTIL_FROM_TIMESHEET")
 	flag.StringVar(&logLevel, "log-level", "info", "log level")
 	flag.StringVar(&folder, "folder", "", "base path to obsidian vault")
 	flag.StringVar(&dailyFolder, "daily-folder", "", "where the daily notes are stored inside the vault")
-	flag.StringVar(&reportPath, "report", "", "path to toggl detailed report (csv)")
+	flag.StringVar(&reportPath, "report", "", "path to time report (csv)")
+	flag.StringVar(&sourceType, "source-type", "", "type of the report (toggl, timenote), empty to ask")
 	flag.StringVar(&projects, "project", "", "comma separated list of projects to include")
 	flag.StringVar(&clients, "client", "", "comma separated list of clients to include")
 	flag.StringVar(&startDateFlag, "start-date", "", "lowest date to import (2006-01-02), empty for no limit")
@@ -46,14 +49,14 @@ func main() {
 	flag.Parse()
 	internal.PrintFlags()
 
-	logger := internal.CreateLogger(logLevel, "OBS_UTIL_FROM_TOGGL")
+	logger := internal.CreateLogger(logLevel, "OBS_UTIL_FROM_TIMESHEET")
 	if err := run(logger); err != nil {
-		logger.Error("error running obs-from-toggl", "err", err)
+		logger.Error("error running obs-from-timesheet", "err", err)
 		os.Exit(1)
 	}
 }
 
-// run reads the toggl report and writes the work time to daily notes that have no value yet.
+// run reads the time report and writes the work time to daily notes that have no value yet.
 func run(logger *slog.Logger) error {
 	if folder == "" {
 		return errors.New("-folder must be non empty")
@@ -84,12 +87,21 @@ func run(logger *slog.Logger) error {
 			return err
 		}
 	}
+	if sourceType == "" {
+		if sourceType, err = internal.PromptSelect("source type", slices.Sorted(maps.Keys(formats))); err != nil {
+			return err
+		}
+	}
+	format, ok := formats[sourceType]
+	if !ok {
+		return fmt.Errorf("-source-type %q not supported, use one of %v", sourceType, slices.Sorted(maps.Keys(formats)))
+	}
 	includedProjects, includedClients := splitList(projects), splitList(clients)
 
 	if printConfig {
 		logger.Info("folder", "folder", resolvedFolder)
 		logger.Info("daily-folder", "daily-folder", dailyFolder)
-		logger.Info("report", "report", reportPath)
+		logger.Info("report", "report", reportPath, "source-type", sourceType)
 		logger.Info("projects", "projects", slices.Sorted(maps.Keys(includedProjects)))
 		logger.Info("clients", "clients", slices.Sorted(maps.Keys(includedClients)))
 		logger.Info("range", "start-date", startDateFlag, "until", lastDay)
@@ -102,7 +114,7 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer report.Close()
-	workTime, otherTime, err := readWorkTime(report, includedProjects, includedClients)
+	workTime, otherTime, err := readWorkTime(report, format, includedProjects, includedClients)
 	if err != nil {
 		return err
 	}
@@ -135,7 +147,7 @@ func run(logger *slog.Logger) error {
 		}
 	}
 
-	logger.Info("done importing toggl work time", "scanned", scanned, "updated", updated, "dry-run", dryRun)
+	logger.Info("done importing work time", "scanned", scanned, "updated", updated, "dry-run", dryRun)
 	return nil
 }
 

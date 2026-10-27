@@ -95,9 +95,9 @@ builds:
     goarch:
       - amd64
       - arm64
-  - id: obs-from-toggl
-    main: ./cmd/obs-from-toggl
-    binary: obs-from-toggl
+  - id: obs-from-timesheet
+    main: ./cmd/obs-from-timesheet
+    binary: obs-from-timesheet
     env:
       - CGO_ENABLED=0
     goos:
@@ -137,9 +137,9 @@ brews:
       bin.install "jrnl"
       bin.install "obs-fm"
       bin.install "obs-from-apple"
-      bin.install "obs-from-toggl"
+      bin.install "obs-from-timesheet"
     test: |
-      %w[am backfill daily ggl ical jrnl obs-fm obs-from-apple obs-from-toggl].each do |b|
+      %w[am backfill daily ggl ical jrnl obs-fm obs-from-apple obs-from-timesheet].each do |b|
         assert_predicate bin/b, :exist?
       end
 

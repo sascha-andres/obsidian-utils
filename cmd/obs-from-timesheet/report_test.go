@@ -50,7 +50,7 @@ func TestReadWorkTime(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotOther, err := readWorkTime(strings.NewReader(sampleReport), tt.projects, tt.clients)
+			got, gotOther, err := readWorkTime(strings.NewReader(sampleReport), formats["toggl"], tt.projects, tt.clients)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -65,14 +65,14 @@ func TestReadWorkTime(t *testing.T) {
 }
 
 func TestReadWorkTimeMissingColumn(t *testing.T) {
-	if _, _, err := readWorkTime(strings.NewReader("\"Project\",\"Start date\"\n"), nil, nil); err == nil {
+	if _, _, err := readWorkTime(strings.NewReader("\"Project\",\"Start date\"\n"), formats["toggl"], nil, nil); err == nil {
 		t.Fatal("readWorkTime() without stop columns must fail")
 	}
 	header := "\"Project\",\"Start date\",\"Start time\",\"Stop date\",\"Stop time\"\n"
-	if _, _, err := readWorkTime(strings.NewReader(header), nil, nil); err != nil {
+	if _, _, err := readWorkTime(strings.NewReader(header), formats["toggl"], nil, nil); err != nil {
 		t.Fatalf("readWorkTime() without client filter must not need the client column: %v", err)
 	}
-	if _, _, err := readWorkTime(strings.NewReader(header), nil, map[string]bool{"Work": true}); err == nil {
+	if _, _, err := readWorkTime(strings.NewReader(header), formats["toggl"], nil, map[string]bool{"Work": true}); err == nil {
 		t.Fatal("readWorkTime() with client filter must fail without client column")
 	}
 }
@@ -82,11 +82,30 @@ func TestReadWorkTimeColumnOrder(t *testing.T) {
 "09:00:00","a","2026-10-20","08:00:00","IQ","2026-10-20","Work"
 "11:00:00","b","2026-10-20","10:00:00","Other","2026-10-20",""
 `
-	got, gotOther, err := readWorkTime(strings.NewReader(report), nil, map[string]bool{"Work": true})
+	got, gotOther, err := readWorkTime(strings.NewReader(report), formats["toggl"], nil, map[string]bool{"Work": true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if want := map[string]time.Duration{"2026-10-20": time.Hour}; !maps.Equal(got, want) || !maps.Equal(gotOther, want) {
 		t.Fatalf("readWorkTime() work = %v, other = %v, want %v for both", got, gotOther, want)
+	}
+}
+
+func TestReadWorkTimeTimenote(t *testing.T) {
+	report := `date,start,stop,duration,hours,client,project,description,running,billable
+2026-11-05,12:29,12:32,0:03,0.05,Work,IQ,a,false,true
+2026-11-05,23:30,00:30,1:00,1.00,Work,IQ,b,false,true
+2026-11-05,13:00,14:00,1:00,1.00,,Other,c,false,true
+2026-11-06,12:32,,0:00,0.01,Work,IQ,d,true,true
+`
+	got, gotOther, err := readWorkTime(strings.NewReader(report), formats["timenote"], map[string]bool{"IQ": true}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := map[string]time.Duration{"2026-11-05": 33 * time.Minute, "2026-11-06": 30 * time.Minute}; !maps.Equal(got, want) {
+		t.Fatalf("readWorkTime() work = %v, want %v", got, want)
+	}
+	if want := map[string]time.Duration{"2026-11-05": time.Hour}; !maps.Equal(gotOther, want) {
+		t.Fatalf("readWorkTime() other = %v, want %v", gotOther, want)
 	}
 }
