@@ -76,3 +76,17 @@ func TestReadWorkTimeMissingColumn(t *testing.T) {
 		t.Fatal("readWorkTime() with client filter must fail without client column")
 	}
 }
+
+func TestReadWorkTimeColumnOrder(t *testing.T) {
+	report := `"Stop time","Description","Stop date","Start time","Project","Start date","Client"
+"09:00:00","a","2026-10-20","08:00:00","IQ","2026-10-20","Work"
+"11:00:00","b","2026-10-20","10:00:00","Other","2026-10-20",""
+`
+	got, gotOther, err := readWorkTime(strings.NewReader(report), nil, map[string]bool{"Work": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := map[string]time.Duration{"2026-10-20": time.Hour}; !maps.Equal(got, want) || !maps.Equal(gotOther, want) {
+		t.Fatalf("readWorkTime() work = %v, other = %v, want %v for both", got, gotOther, want)
+	}
+}
