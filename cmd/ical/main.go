@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path"
 	"time"
 
 	"github.com/apognu/gocal"
-	"github.com/sascha-andres/reuse/flag"
+	"go.livingit.de/reuse/flag"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
 	"github.com/sascha-andres/obsidian-utils/internal"
@@ -39,7 +38,9 @@ func init() {
 
 func main() {
 	flag.Parse()
-	internal.PrintFlags()
+	if printConfig {
+		internal.PrintFlags()
+	}
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_ICAL")
 	if err := run(logger); err != nil {
 		logger.Error("error running application", "err", err)
@@ -53,39 +54,28 @@ func run(logger *slog.Logger) error {
 	if icalFile == "" {
 		return errors.New("-ical-file must be non empty")
 	}
-	var (
-		f   *os.File
-		err error
-	)
-	if icalFile == "-" {
-		f = os.Stdin
-	} else {
-		f, err = os.OpenFile(icalFile, os.O_RDONLY, 0600)
-	}
-	if err != nil {
-		return err
+	f := os.Stdin
+	if icalFile != "-" {
+		file, err := os.Open(icalFile)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		f = file
 	}
 	c := gocal.NewParser(f)
 	c.SkipBounds = true
-	err = c.Parse()
-	if err != nil {
+	if err := c.Parse(); err != nil {
 		return err
 	}
 	if len(c.Events) == 0 {
 		logger.Info("no events found")
 		return nil
 	}
-	if folder == "" {
-		return errors.New("-folder must be non empty")
-	}
-	if meetingFolder == "" {
-		return errors.New("-meeting-folder must be non empty")
-	}
-	folder, err := obsidianutils.ApplyDirectoryPlaceHolder(folder)
+	folder, err := internal.ResolveFolder(folder, meetingFolder, "meeting-folder")
 	if err != nil {
 		return err
 	}
-	folder = path.Join(folder, meetingFolder)
 
 	if printConfig {
 		fmt.Printf("meeting notes folder: %q", folder)
@@ -102,29 +92,15 @@ func run(logger *slog.Logger) error {
 		if err != nil {
 			return err
 		}
-		if _, err := os.Stat(fullName); err == nil {
-			if force {
-				if !dryRun {
-					err = os.Remove(fullName)
-					if err != nil {
-						logger.Error("could not remove existing file", "file", fullName)
-						os.Exit(1)
-					}
-				}
-			} else {
-				logger.Debug("skipping existing file", "file", fullName)
-				continue
-			}
+		if _, err := os.Stat(fullName); err == nil && !force {
+			logger.Debug("skipping existing file", "file", fullName)
+			continue
 		}
 		if dryRun {
 			fmt.Printf("would create meeting with [%s] on [%s] in [%s]\n", event.Summary, *event.Start, fullName)
 			continue
 		}
-		m, err := meeting.NewMeeting(meeting.WithTitle(event.Summary))
-		if err != nil {
-			return err
-		}
-		c, err := m.CreateContent(event.Summary, *event.Start)
+		c, err := meeting.Content(event.Summary, *event.Start)
 		if err != nil {
 			return err
 		}

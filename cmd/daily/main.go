@@ -5,18 +5,14 @@ import (
 	_ "embed"
 	"errors"
 	f "flag"
-	"fmt"
 	"log/slog"
 	"os"
 	"path"
-	"strconv"
-	"strings"
 	"text/template"
 	"time"
 
-	"github.com/sascha-andres/reuse/flag"
+	"go.livingit.de/reuse/flag"
 
-	obsidianutils "github.com/sascha-andres/obsidian-utils"
 	"github.com/sascha-andres/obsidian-utils/internal"
 )
 
@@ -89,33 +85,15 @@ func init() {
 // main is the entry point of the program.
 func main() {
 	flag.Parse()
-	internal.PrintFlags()
+	if printConfig {
+		internal.PrintFlags()
+	}
 
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_DAILY")
 	if err := run(logger); err != nil {
 		logger.Error("error running daily", "err", err)
 		os.Exit(1)
 	}
-}
-
-// resolveDateArg resolves a date argument that is either an absolute date (2006-01-02) or an
-// offset relative to today expressed as +N or -N days.
-func resolveDateArg(raw string) (string, error) {
-	if relativeString, ok := strings.CutPrefix(raw, "-"); ok {
-		offset, err := strconv.Atoi(relativeString)
-		if err != nil {
-			return "", err
-		}
-		return time.Now().AddDate(0, 0, offset*-1).Format(time.DateOnly), nil
-	}
-	if relativeString, ok := strings.CutPrefix(raw, "+"); ok {
-		offset, err := strconv.Atoi(relativeString)
-		if err != nil {
-			return "", err
-		}
-		return time.Now().AddDate(0, 0, offset).Format(time.DateOnly), nil
-	}
-	return raw, nil
 }
 
 // explicitlySet reports whether the named flag was actually passed on the command line.
@@ -133,15 +111,9 @@ func explicitlySet(name string) bool {
 func run(logger *slog.Logger) error {
 	logger.Info("start creating a daily note")
 
-	if folder == "" {
-		return errors.New("-folder must be non empty")
-	}
-	folder, err := obsidianutils.ApplyDirectoryPlaceHolder(folder)
+	folder, err := internal.ResolveFolder(folder, dailyFolder, "daily-folder")
 	if err != nil {
 		return err
-	}
-	if dailyFolder == "" {
-		return errors.New("-daily-folder must be non empty")
 	}
 	if until != "" && explicitlySet("for-date") {
 		return errors.New("-for-date and -until are mutually exclusive")
@@ -149,15 +121,13 @@ func run(logger *slog.Logger) error {
 	if forDate == "" {
 		forDate = time.Now().Format(time.DateOnly)
 	}
-	forDate, err = resolveDateArg(forDate)
+	forDate, err = internal.ResolveDateArg(forDate)
 	if err != nil {
 		return err
 	}
 
-	folder = path.Join(folder, dailyFolder)
-
 	if until != "" {
-		resolvedUntil, err := resolveDateArg(until)
+		resolvedUntil, err := internal.ResolveDateArg(until)
 		if err != nil {
 			return err
 		}
@@ -200,24 +170,21 @@ func run(logger *slog.Logger) error {
 
 // createDailyNote creates the daily note file for the given date inside folder, unless it already exists (or -overwrite is set).
 func createDailyNote(logger *slog.Logger, folder string, t time.Time) error {
-	resultingDirectory := path.Join(folder, t.Format("2006/01"))
-	resultingFile := path.Join(folder, fmt.Sprintf("%s.md", t.Format("2006/01/2006-01-02")))
+	resultingFile := internal.DailyNotePath(folder, t)
 
-	_ = os.MkdirAll(resultingDirectory, 0700)
-
-	if overwrite {
-		logger.Info("overwriting existing file", "file", resultingFile)
-		_ = os.Remove(resultingFile)
-	}
+	_ = os.MkdirAll(path.Dir(resultingFile), 0700)
 
 	if _, err := os.Stat(resultingFile); err == nil {
-		logger.Warn("file already exists", "file", resultingFile)
-		return nil
+		if !overwrite {
+			logger.Warn("file already exists", "file", resultingFile)
+			return nil
+		}
+		logger.Info("overwriting existing file", "file", resultingFile)
 	}
 
 	logger.Info("creating file", "file", resultingFile)
 
-	tpl, err := executeTemplate(logger, t, nil)
+	tpl, err := executeTemplate(logger, t)
 	if err != nil {
 		return err
 	}
@@ -230,23 +197,20 @@ func createDailyNote(logger *slog.Logger, folder string, t time.Time) error {
 	return nil
 }
 
-// executeTemplate generates a template using the provided date and error, returning the rendered output or an error.
-func executeTemplate(logger *slog.Logger, t time.Time, err error) (bytes.Buffer, error) {
-	templateData := NoteData{}
-	templateData.DailyNoteFolder = dailyFolder
-	templateData.Current.Year = t.Format("2006")
-	templateData.Current.Month = t.Format("01")
-	templateData.Current.Day = t.Format("02")
-	templateData.Current.DateOnly = t.Format("2006-01-02")
-	templateData.Previous.Year = t.AddDate(0, 0, -1).Format("2006")
-	templateData.Previous.Month = t.AddDate(0, 0, -1).Format("01")
-	templateData.Previous.Day = t.AddDate(0, 0, -1).Format("02")
-	templateData.Previous.DateOnly = t.AddDate(0, 0, -1).Format("2006-01-02")
-	templateData.Next.Year = t.AddDate(0, 0, 1).Format("2006")
-	templateData.Next.Month = t.AddDate(0, 0, 1).Format("01")
-	templateData.Next.Day = t.AddDate(0, 0, 1).Format("02")
-	templateData.Next.DateOnly = t.AddDate(0, 0, 1).Format("2006-01-02")
-	templateData.WorkLocation = defaultWorkLocation
+// dayData returns the template data of the day t.
+func dayData(t time.Time) DayData {
+	return DayData{Year: t.Format("2006"), Month: t.Format("01"), Day: t.Format("02"), DateOnly: t.Format(time.DateOnly)}
+}
+
+// executeTemplate renders the daily note template for the date t.
+func executeTemplate(logger *slog.Logger, t time.Time) (bytes.Buffer, error) {
+	templateData := NoteData{
+		Previous:        dayData(t.AddDate(0, 0, -1)),
+		Next:            dayData(t.AddDate(0, 0, 1)),
+		Current:         dayData(t),
+		DailyNoteFolder: dailyFolder,
+		WorkLocation:    defaultWorkLocation,
+	}
 
 	if t.Weekday() == time.Saturday || t.Weekday() == time.Sunday {
 		templateData.WorkLocation = "Weekend"

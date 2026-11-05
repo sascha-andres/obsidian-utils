@@ -3,16 +3,11 @@ package main
 import (
 	"errors"
 	"log/slog"
-	"maps"
 	"math"
 	"os"
-	"path"
-	"slices"
-	"time"
 
-	"github.com/sascha-andres/reuse/flag"
+	"go.livingit.de/reuse/flag"
 
-	obsidianutils "github.com/sascha-andres/obsidian-utils"
 	"github.com/sascha-andres/obsidian-utils/internal"
 )
 
@@ -41,7 +36,9 @@ func init() {
 // main is the entry point of the program.
 func main() {
 	flag.Parse()
-	internal.PrintFlags()
+	if printConfig {
+		internal.PrintFlags()
+	}
 
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_FROM_APPLE")
 	if err := run(logger); err != nil {
@@ -52,15 +49,9 @@ func main() {
 
 // run reads the apple health export and writes steps and sleep minutes to daily notes that have no value yet.
 func run(logger *slog.Logger) error {
-	if folder == "" {
-		return errors.New("-folder must be non empty")
-	}
-	resolvedFolder, err := obsidianutils.ApplyDirectoryPlaceHolder(folder)
+	dailyNoteFolder, err := internal.ResolveFolder(folder, dailyFolder, "daily-folder")
 	if err != nil {
 		return err
-	}
-	if dailyFolder == "" {
-		return errors.New("-daily-folder must be non empty")
 	}
 	if exportPath == "" {
 		return errors.New("-export must be non empty")
@@ -68,23 +59,13 @@ func run(logger *slog.Logger) error {
 	if stepsKey == "" || sleepKey == "" {
 		return errors.New("-steps-key and -sleep-key must be non empty")
 	}
-	// today's data is not complete, so the last day to import is yesterday
-	lastDay := time.Now().AddDate(0, 0, -1).Format(time.DateOnly)
-	if untilFlag != "" {
-		if _, err := time.Parse(time.DateOnly, untilFlag); err != nil {
-			return err
-		}
-		lastDay = min(lastDay, untilFlag)
-	}
-	if startDateFlag != "" {
-		if _, err := time.Parse(time.DateOnly, startDateFlag); err != nil {
-			return err
-		}
+	lastDay, err := internal.LastImportDay(startDateFlag, untilFlag)
+	if err != nil {
+		return err
 	}
 
 	if printConfig {
-		logger.Info("folder", "folder", resolvedFolder)
-		logger.Info("daily-folder", "daily-folder", dailyFolder)
+		logger.Info("daily-folder", "daily-folder", dailyNoteFolder)
 		logger.Info("export", "export", exportPath)
 		logger.Info("range", "start-date", startDateFlag, "until", lastDay)
 		logger.Info("keys", "steps-key", stepsKey, "sleep-key", sleepKey)
@@ -102,38 +83,26 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
-	days := map[string]bool{}
+	values := map[string]map[string]any{}
 	for day := range data.steps {
-		days[day] = true
+		values[day] = map[string]any{}
 	}
 	for day := range data.sleep {
-		days[day] = true
+		values[day] = map[string]any{}
 	}
-
-	var scanned, updated int
-	for _, day := range slices.Sorted(maps.Keys(days)) {
-		if day < startDateFlag || day > lastDay {
-			continue
-		}
-		values := map[string]any{}
+	for day, dayValues := range values {
 		if steps, ok := data.steps.max(day); ok {
-			values[stepsKey] = int(math.Round(steps))
+			dayValues[stepsKey] = int(math.Round(steps))
 		}
 		if sleep, ok := data.sleep.max(day); ok {
-			values[sleepKey] = int(math.Round(sleep))
-		}
-		found, changed, err := internal.FillDailyNote(logger, path.Join(resolvedFolder, dailyFolder), day, values, dryRun)
-		if err != nil {
-			return err
-		}
-		if found {
-			scanned++
-		}
-		if changed {
-			updated++
+			dayValues[sleepKey] = int(math.Round(sleep))
 		}
 	}
 
+	scanned, updated, err := internal.FillDailyNotes(logger, dailyNoteFolder, values, startDateFlag, lastDay, dryRun)
+	if err != nil {
+		return err
+	}
 	logger.Info("done importing apple health data", "scanned", scanned, "updated", updated, "dry-run", dryRun)
 	return nil
 }

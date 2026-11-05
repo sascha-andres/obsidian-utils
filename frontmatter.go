@@ -1,26 +1,13 @@
 package obsidianutils
 
 import (
+	"bytes"
 	"errors"
 	"os"
 
 	"github.com/adrg/frontmatter"
 	"gopkg.in/yaml.v2"
 )
-
-// FrontmatterProcessor is an interface for managing key-value pairs in frontmatter metadata.
-type FrontmatterProcessor interface {
-
-	// GetValue retrieves the value associated with the given key in the frontmatter metadata.
-	// Returns the value as `any` and an error if the key does not exist or another issue occurs.
-	GetValue(key string) (any, error)
-	// SetValue sets the value associated with the given key in the frontmatter metadata.
-	SetValue(key string, value any) error
-
-	// GenerateMarkDownDocument generates a Markdown document with the current frontmatter metadata and content.
-	// Returns the document as a byte slice and an error if the generation fails.
-	GenerateMarkDownDocument() ([]byte, error)
-}
 
 // SimpleFrontmatterProcessor processes markdown files containing frontmatter metadata.
 // It allows reading and modifying frontmatter key-value pairs.
@@ -87,10 +74,10 @@ func (sfp *SimpleFrontmatterProcessor) readDataIfRequired() error {
 		return nil
 	}
 
-	f, err := os.OpenFile(sfp.note, os.O_RDONLY, 0600)
+	data, err := os.ReadFile(sfp.note)
 	if err != nil {
 		return err
 	}
-	sfp.markDownData, err = frontmatter.Parse(f, &sfp.fm)
+	sfp.markDownData, err = frontmatter.Parse(bytes.NewReader(data), &sfp.fm)
 	return err
 }

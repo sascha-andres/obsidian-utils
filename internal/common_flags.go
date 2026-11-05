@@ -4,7 +4,7 @@ import (
 	stdflag "flag"
 	"fmt"
 
-	"github.com/sascha-andres/reuse/flag"
+	"go.livingit.de/reuse/flag"
 )
 
 const commonFlagPrefix = "OBS_UTIL"

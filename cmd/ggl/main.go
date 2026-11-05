@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/sascha-andres/reuse/flag"
+	"go.livingit.de/reuse/flag"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -199,32 +199,12 @@ func saveToken(logger *slog.Logger, path string, token *oauth2.Token) error {
 	return json.NewEncoder(f).Encode(token)
 }
 
-// initializeStateDirectory ensures the state directory exists, creating it with the correct permissions if it does not exist.
-func initializeStateDirectory() error {
-	if _, err := os.Stat(stateDirectory); os.IsNotExist(err) {
-		err := os.MkdirAll(stateDirectory, 0700)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// initializeOutputDirectory ensures the output directory exists, creating it with the correct permissions if it does not exist.
-func initializeOutputDirectory(writeTo string) error {
-	if _, err := os.Stat(writeTo); os.IsNotExist(err) {
-		err := os.MkdirAll(writeTo, 0750)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // main initializes the program by parsing flags and executes the run function. It logs a fatal error if the run fails.
 func main() {
 	flag.Parse()
-	internal.PrintFlags()
+	if verbose {
+		internal.PrintFlags()
+	}
 	logger := internal.CreateLogger(logLevel, "GGL")
 	if err := run(logger); err != nil {
 		logger.Error("error running", "err", err)
@@ -262,41 +242,17 @@ func run(logger *slog.Logger) error {
 	return handleGroups(srv, writeTo)
 }
 
-// handleGroups retrieves Google Contact Groups, exporting data as JSON either by printing to the console or saving to a file.
+// handleGroups retrieves Google Contact Groups and exports them.
 func handleGroups(srv *people.Service, writeTo string) error {
-	// List contact groups
 	groups, err := srv.ContactGroups.List().PageSize(1000).Do()
 	if err != nil {
 		return fmt.Errorf("unable to retrieve contact groups: %w", err)
 	}
-
-	// Marshal groups data to JSON
-	groupsJsonData, err := json.MarshalIndent(groups.ContactGroups, "", "  ")
-	if err != nil {
-		return fmt.Errorf("unable to marshal groups to JSON: %w", err)
-	}
-
-	if printToConsole == "groups" {
-		fmt.Println(string(groupsJsonData))
-	} else if printToConsole == "" {
-		// Write groups data to file
-		groupsOutputFile := path.Join(writeTo, "groups.json")
-		err = os.WriteFile(groupsOutputFile, groupsJsonData, 0644)
-		if err != nil {
-			return fmt.Errorf("unable to write groups to file: %w", err)
-		}
-
-		groupsAbsPath, _ := filepath.Abs(groupsOutputFile)
-		if verbose {
-			fmt.Printf("Successfully exported %d groups to %s\n", len(groups.ContactGroups), groupsAbsPath)
-		}
-	}
-	return nil
+	return export("groups", groups.ContactGroups, len(groups.ContactGroups), writeTo)
 }
 
-// handleContacts retrieves and processes Google Contacts, exporting data to JSON either by printing or saving to a file.
+// handleContacts retrieves Google Contacts and exports them.
 func handleContacts(srv *people.Service, writeTo string) error {
-	// List connections (contacts)
 	r, err := srv.People.Connections.List("people/me").
 		PersonFields("names,emailAddresses,phoneNumbers,addresses,organizations,memberships,birthdays").
 		PageSize(1000).
@@ -304,29 +260,29 @@ func handleContacts(srv *people.Service, writeTo string) error {
 	if err != nil {
 		return fmt.Errorf("unable to retrieve contacts: %w", err)
 	}
+	return export("contacts", r.Connections, len(r.Connections), writeTo)
+}
 
-	// Marshal contacts data to JSON
-	jsonData, err := json.MarshalIndent(r.Connections, "", "  ")
+// export marshals data to JSON. It prints the JSON if -print-to-console is name, or writes it to <writeTo>/<name>.json if -print-to-console is empty.
+func export(name string, data any, count int, writeTo string) error {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("unable to marshal contacts to JSON: %w", err)
+		return fmt.Errorf("unable to marshal %s to JSON: %w", name, err)
 	}
-
-	if printToConsole == "contacts" {
+	switch printToConsole {
+	case name:
 		fmt.Println(string(jsonData))
-	} else if printToConsole == "" {
-		// Write contacts data to a file
-		outputFile := path.Join(writeTo, "contacts.json")
-		err = os.WriteFile(outputFile, jsonData, 0644)
-		if err != nil {
-			return fmt.Errorf("unable to write contacts to file: %w", err)
+	case "":
+		outputFile := path.Join(writeTo, name+".json")
+		if err := os.WriteFile(outputFile, jsonData, 0644); err != nil {
+			return fmt.Errorf("unable to write %s to file: %w", name, err)
 		}
-
-		absPath, _ := filepath.Abs(outputFile)
 		if verbose {
-			fmt.Printf("Successfully exported %d contacts to %s\n", len(r.Connections), absPath)
+			absPath, _ := filepath.Abs(outputFile)
+			fmt.Printf("Successfully exported %d %s to %s\n", count, name, absPath)
 		}
 	}
-	return err
+	return nil
 }
 
 // initializeGoogleApiClient initializes and returns a Google People Service client using OAuth2.
@@ -362,13 +318,11 @@ func initializeGoogleApiClient(logger *slog.Logger, ctx context.Context) (*peopl
 
 // initializeEnvironment sets up the necessary directories for application state and output, returning an error on failure.
 func initializeEnvironment(logger *slog.Logger, writeTo string) error {
-	err := initializeStateDirectory()
-	if err != nil {
+	if err := os.MkdirAll(stateDirectory, 0700); err != nil {
 		logger.Error("error state directory", "err", err)
 		return err
 	}
-
-	err = initializeOutputDirectory(writeTo)
+	err := os.MkdirAll(writeTo, 0750)
 	if err != nil {
 		logger.Error("error initializing output directory", "err", err)
 	}

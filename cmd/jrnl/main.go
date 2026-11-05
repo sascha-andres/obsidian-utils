@@ -5,15 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/sascha-andres/reuse/flag"
+	"go.livingit.de/reuse/flag"
 
-	obsidianutils "github.com/sascha-andres/obsidian-utils"
 	"github.com/sascha-andres/obsidian-utils/internal"
 )
 
@@ -21,7 +18,7 @@ var (
 	folder, forDate, dailyFolder string
 	headline                     = "## Other stuff"
 	logLevel                     string
-	dryRun                       bool
+	dryRun, printConfig          bool
 )
 
 func init() {
@@ -33,6 +30,7 @@ func init() {
 	flag.StringVar(&forDate, "for-date", time.Now().Format(time.DateOnly), "date for which to create the daily note (2006-01-02)")
 	flag.StringVar(&headline, "headline", headline, fmt.Sprintf("headline under which to place the journal note (default: %s)", headline))
 	flag.BoolVar(&dryRun, "dry-run", false, "pass to not edit file but to print added line with some context")
+	flag.BoolVar(&printConfig, "print-config", false, "print configuration")
 }
 
 func main() {
@@ -44,8 +42,10 @@ func main() {
 
 func run(_ context.Context) error {
 	flag.Parse()
-	internal.PrintFlags()
-	fmt.Printf("--- %#v", os.Args)
+	if printConfig {
+		internal.PrintFlags()
+		return nil
+	}
 
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_JRNL")
 
@@ -60,7 +60,7 @@ func run(_ context.Context) error {
 		return err
 	}
 
-	resultingFile := path.Join(dailyNoteFolder, fmt.Sprintf("%s.md", t.Format("2006/01/2006-01-02")))
+	resultingFile := internal.DailyNotePath(dailyNoteFolder, t)
 	if e, _ := internal.Exists(resultingFile); !e {
 		return fmt.Errorf("file %s does not exist, consider to create with daily", resultingFile)
 	}
@@ -236,39 +236,15 @@ func addBulletpoint(data []byte, bulletPoint, after string) ([]byte, error) {
 	return []byte(strings.Join(lines, "\n")), nil
 }
 
-// constructFolder validates and processes folder paths, applies placeholders, and adjusts dates based on input parameters.
+// constructFolder validates and joins the folder paths and resolves a relative -for-date.
 func constructFolder() (string, error) {
-	if folder == "" {
-		return "", errors.New("-folder must be non empty")
-	}
-	folder, err := obsidianutils.ApplyDirectoryPlaceHolder(folder)
+	dailyNoteFolder, err := internal.ResolveFolder(folder, dailyFolder, "daily-folder")
 	if err != nil {
 		return "", err
-	}
-	if dailyFolder == "" {
-		return "", errors.New("-daily-folder must be non empty")
 	}
 	if forDate == "" {
 		forDate = time.Now().Format(time.DateOnly)
 	}
-	if strings.HasPrefix(forDate, "-") {
-		relativeString := strings.TrimPrefix(forDate, "-")
-		offset, err := strconv.Atoi(relativeString)
-		if err != nil {
-			return "", err
-		}
-		forDate = time.Now().AddDate(0, 0, offset*-1).Format(time.DateOnly)
-	}
-	if strings.HasPrefix(forDate, "+") {
-		relativeString := strings.TrimPrefix(forDate, "+")
-		offset, err := strconv.Atoi(relativeString)
-		if err != nil {
-			return "", err
-		}
-		forDate = time.Now().AddDate(0, 0, offset).Format(time.DateOnly)
-	}
-
-	folder = path.Join(folder, dailyFolder)
-
-	return folder, nil
+	forDate, err = internal.ResolveDateArg(forDate)
+	return dailyNoteFolder, err
 }

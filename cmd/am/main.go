@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path"
 	"strings"
 	"time"
 
-	"github.com/sascha-andres/reuse/flag"
+	"go.livingit.de/reuse/flag"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
 	"github.com/sascha-andres/obsidian-utils/internal"
 	"github.com/sascha-andres/obsidian-utils/internal/meeting"
 )
+
+// intervalDays contains the days between recurring meetings per -interval.
+var intervalDays = map[string]int{"daily": 1, "weekly": 7, "bi-weekly": 14}
 
 var (
 	folder, interval, meetingFolder, dateTime, title, logLevel string
@@ -42,7 +44,9 @@ func init() {
 // main is the entry point of the program.
 func main() {
 	flag.Parse()
-	internal.PrintFlags()
+	if printConfig {
+		internal.PrintFlags()
+	}
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_AM")
 
 	if err := run(logger); err != nil {
@@ -71,21 +75,13 @@ func main() {
 // An error is returned if any of the steps fail.
 func run(logger *slog.Logger) error {
 	logger.Info("start creating a meeting note")
-	if folder == "" {
-		return errors.New("-folder must be non empty")
-	}
-	folder, err := obsidianutils.ApplyDirectoryPlaceHolder(folder)
+	folder, err := internal.ResolveFolder(folder, meetingFolder, "meeting-folder")
 	if err != nil {
 		return err
 	}
-	if meetingFolder == "" {
-		return errors.New("-meeting-folder must be non empty")
-	}
-
-	folder = path.Join(folder, meetingFolder)
 
 	if recurring {
-		if interval != "daily" && interval != "weekly" && interval != "bi-weekly" {
+		if _, ok := intervalDays[interval]; !ok {
 			return errors.New("invalid interval")
 		}
 		if times < 1 {
@@ -149,22 +145,15 @@ func run(logger *slog.Logger) error {
 		}
 	}
 
-	t, err := time.Parse("2006-01-02 15:04", ts)
+	// the user enters local time
+	t, err := time.ParseInLocation("2006-01-02 15:04", ts, time.Local)
 	if err != nil {
 		return err
 	}
 
 	for i := 0; i < times; i++ {
 		if i > 0 {
-			if interval == "daily" {
-				t = t.Add(time.Hour * 24)
-			}
-			if interval == "weekly" {
-				t = t.Add(time.Hour * 168)
-			}
-			if interval == "bi-weekly" {
-				t = t.Add(time.Hour * 336)
-			}
+			t = t.AddDate(0, 0, intervalDays[interval])
 		}
 		logger.Info("trying to create meeting", "title", localTitle, "appointment", t)
 
@@ -176,11 +165,7 @@ func run(logger *slog.Logger) error {
 			fmt.Printf("would create meeting with [%s] on [%s] in [%s]\n", localTitle, t, fullName)
 		} else {
 			fmt.Printf("creating meeting with [%s] on [%s] in [%s]\n", localTitle, t, fullName)
-			m, err := meeting.NewMeeting(meeting.WithTitle(localTitle))
-			if err != nil {
-				return err
-			}
-			c, err := m.CreateContent(localTitle, t)
+			c, err := meeting.Content(localTitle, t)
 			if err != nil {
 				return err
 			}

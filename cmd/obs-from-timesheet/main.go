@@ -7,14 +7,11 @@ import (
 	"maps"
 	"math"
 	"os"
-	"path"
 	"slices"
 	"strings"
-	"time"
 
-	"github.com/sascha-andres/reuse/flag"
+	"go.livingit.de/reuse/flag"
 
-	obsidianutils "github.com/sascha-andres/obsidian-utils"
 	"github.com/sascha-andres/obsidian-utils/internal"
 )
 
@@ -47,7 +44,9 @@ func init() {
 // main is the entry point of the program.
 func main() {
 	flag.Parse()
-	internal.PrintFlags()
+	if printConfig {
+		internal.PrintFlags()
+	}
 
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_FROM_TIMESHEET")
 	if err := run(logger); err != nil {
@@ -58,15 +57,9 @@ func main() {
 
 // run reads the time report and writes the work time to daily notes that have no value yet.
 func run(logger *slog.Logger) error {
-	if folder == "" {
-		return errors.New("-folder must be non empty")
-	}
-	resolvedFolder, err := obsidianutils.ApplyDirectoryPlaceHolder(folder)
+	dailyNoteFolder, err := internal.ResolveFolder(folder, dailyFolder, "daily-folder")
 	if err != nil {
 		return err
-	}
-	if dailyFolder == "" {
-		return errors.New("-daily-folder must be non empty")
 	}
 	if reportPath == "" {
 		return errors.New("-report must be non empty")
@@ -74,18 +67,9 @@ func run(logger *slog.Logger) error {
 	if workTimeKey == "" {
 		return errors.New("-work-time-key must be non empty")
 	}
-	// today's data is not complete, so the last day to import is yesterday
-	lastDay := time.Now().AddDate(0, 0, -1).Format(time.DateOnly)
-	if untilFlag != "" {
-		if _, err := time.Parse(time.DateOnly, untilFlag); err != nil {
-			return err
-		}
-		lastDay = min(lastDay, untilFlag)
-	}
-	if startDateFlag != "" {
-		if _, err := time.Parse(time.DateOnly, startDateFlag); err != nil {
-			return err
-		}
+	lastDay, err := internal.LastImportDay(startDateFlag, untilFlag)
+	if err != nil {
+		return err
 	}
 	if sourceType == "" {
 		if sourceType, err = internal.PromptSelect("source type", slices.Sorted(maps.Keys(formats))); err != nil {
@@ -99,8 +83,7 @@ func run(logger *slog.Logger) error {
 	includedProjects, includedClients := splitList(projects), splitList(clients)
 
 	if printConfig {
-		logger.Info("folder", "folder", resolvedFolder)
-		logger.Info("daily-folder", "daily-folder", dailyFolder)
+		logger.Info("daily-folder", "daily-folder", dailyNoteFolder)
 		logger.Info("report", "report", reportPath, "source-type", sourceType)
 		logger.Info("projects", "projects", slices.Sorted(maps.Keys(includedProjects)))
 		logger.Info("clients", "clients", slices.Sorted(maps.Keys(includedClients)))
@@ -118,33 +101,24 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	days := maps.Clone(workTime)
+	values := map[string]map[string]any{}
+	for day, work := range workTime {
+		values[day] = map[string]any{workTimeKey: int(math.Round(work.Minutes()))}
+	}
 	if otherTimeKey != "" {
-		maps.Copy(days, otherTime)
+		for day := range otherTime {
+			if values[day] == nil {
+				values[day] = map[string]any{}
+			}
+		}
+		for day, dayValues := range values {
+			dayValues[otherTimeKey] = int(math.Round(otherTime[day].Minutes()))
+		}
 	}
 
-	var scanned, updated int
-	for _, day := range slices.Sorted(maps.Keys(days)) {
-		if day < startDateFlag || day > lastDay {
-			continue
-		}
-		values := map[string]any{}
-		if work, ok := workTime[day]; ok {
-			values[workTimeKey] = int(math.Round(work.Minutes()))
-		}
-		if otherTimeKey != "" {
-			values[otherTimeKey] = int(math.Round(otherTime[day].Minutes()))
-		}
-		found, changed, err := internal.FillDailyNote(logger, path.Join(resolvedFolder, dailyFolder), day, values, dryRun)
-		if err != nil {
-			return err
-		}
-		if found {
-			scanned++
-		}
-		if changed {
-			updated++
-		}
+	scanned, updated, err := internal.FillDailyNotes(logger, dailyNoteFolder, values, startDateFlag, lastDay, dryRun)
+	if err != nil {
+		return err
 	}
 
 	logger.Info("done importing work time", "scanned", scanned, "updated", updated, "dry-run", dryRun)

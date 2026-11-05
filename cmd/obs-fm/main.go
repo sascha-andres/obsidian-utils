@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sascha-andres/reuse/flag"
+	"go.livingit.de/reuse/flag"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
 	"github.com/sascha-andres/obsidian-utils/internal"
@@ -37,7 +37,9 @@ func init() {
 
 func main() {
 	flag.Parse()
-	internal.PrintFlags()
+	if printConfig {
+		internal.PrintFlags()
+	}
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_FM")
 	if err := run(logger); err != nil {
 		logger.Error("could not execute utility", "err", err)
@@ -78,38 +80,28 @@ func run(logger *slog.Logger) error {
 		return errors.New("-key must be non empty")
 	}
 
-	completePath := path.Join(folder, dailyFolder, dailyTimestamp.Format("2006/01"), dailyTimestamp.Format("2006-01-02")+".md")
+	completePath := notePath
+	if noteType == "daily" {
+		completePath = internal.DailyNotePath(path.Join(folder, dailyFolder), dailyTimestamp)
+	} else if !path.IsAbs(notePath) {
+		completePath = path.Join(folder, notePath)
+	}
 	logger.Debug("working on", "file", completePath)
-	processor := obsidianutils.NewSimpleFrontmatterProcessor(completePath)
+	var typedValue any = value
 	switch valueType {
 	case "int":
-		intValue, err := strconv.Atoi(value)
-		if err != nil {
-			logger.Error("could not convert to int", "input", value)
-			return err
-		}
-		err = processor.SetValue(key, intValue)
-		break
+		typedValue, err = strconv.Atoi(value)
 	case "float":
-		floatValue, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			logger.Error("could not convert to float", "input", value)
-			return err
-		}
-		err = processor.SetValue(key, floatValue)
-		break
+		typedValue, err = strconv.ParseFloat(value, 64)
 	case "bool":
-		boolValue, err := strconv.ParseBool(value)
-		if err != nil {
-			logger.Error("could not convert to bool", "input", value)
-			return err
-		}
-		err = processor.SetValue(key, boolValue)
-		break
-	default:
-		err = processor.SetValue(key, value)
+		typedValue, err = strconv.ParseBool(value)
 	}
 	if err != nil {
+		logger.Error("could not convert value", "input", value, "value-type", valueType)
+		return err
+	}
+	processor := obsidianutils.NewSimpleFrontmatterProcessor(completePath)
+	if err := processor.SetValue(key, typedValue); err != nil {
 		return err
 	}
 	doc, err := processor.GenerateMarkDownDocument()

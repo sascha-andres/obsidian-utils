@@ -2,13 +2,11 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
-	"path"
 	"time"
 
-	"github.com/sascha-andres/reuse/flag"
+	"go.livingit.de/reuse/flag"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
 	"github.com/sascha-andres/obsidian-utils/internal"
@@ -35,7 +33,9 @@ func init() {
 // main is the entry point of the program.
 func main() {
 	flag.Parse()
-	internal.PrintFlags()
+	if printConfig {
+		internal.PrintFlags()
+	}
 
 	logger := internal.CreateLogger(logLevel, "OBS_UTIL_BACKFILL")
 	if err := run(logger); err != nil {
@@ -46,15 +46,9 @@ func main() {
 
 // run scans daily notes from -start-date up to today and forward-fills zero/missing entries for -frontmatter-key.
 func run(logger *slog.Logger) error {
-	if folder == "" {
-		return errors.New("-folder must be non empty")
-	}
-	resolvedFolder, err := obsidianutils.ApplyDirectoryPlaceHolder(folder)
+	dailyNoteFolder, err := internal.ResolveFolder(folder, dailyFolder, "daily-folder")
 	if err != nil {
 		return err
-	}
-	if dailyFolder == "" {
-		return errors.New("-daily-folder must be non empty")
 	}
 	if startDateFlag == "" {
 		return errors.New("-start-date must be non empty")
@@ -73,8 +67,7 @@ func run(logger *slog.Logger) error {
 	}
 
 	if printConfig {
-		logger.Info("folder", "folder", resolvedFolder)
-		logger.Info("daily-folder", "daily-folder", dailyFolder)
+		logger.Info("daily-folder", "daily-folder", dailyNoteFolder)
 		logger.Info("start-date", "start-date", startDate.Format(time.DateOnly))
 		logger.Info("frontmatter-key", "frontmatter-key", frontmatterKey)
 		return nil
@@ -84,8 +77,6 @@ func run(logger *slog.Logger) error {
 		return errors.New("-start-date must not be in the future")
 	}
 
-	baseFolder := path.Join(resolvedFolder, dailyFolder)
-
 	var (
 		memoized     any
 		haveMemoized bool
@@ -94,7 +85,7 @@ func run(logger *slog.Logger) error {
 	)
 
 	for t := startDate; !t.After(today); t = t.AddDate(0, 0, 1) {
-		notePath := path.Join(baseFolder, fmt.Sprintf("%s.md", t.Format("2006/01/2006-01-02")))
+		notePath := internal.DailyNotePath(dailyNoteFolder, t)
 		exists, err := internal.Exists(notePath)
 		if err != nil {
 			return err

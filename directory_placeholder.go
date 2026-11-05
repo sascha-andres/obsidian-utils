@@ -11,6 +11,6 @@ func ApplyDirectoryPlaceHolder(folder string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	folder = strings.Replace(folder, "$$PWD$$", currentDir, -1)
+	folder = strings.ReplaceAll(folder, "$$PWD$$", currentDir)
 	return folder, nil
 }

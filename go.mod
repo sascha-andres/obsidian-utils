@@ -8,7 +8,7 @@ require (
 	github.com/adrg/frontmatter v0.2.0
 	github.com/apognu/gocal v0.9.1
 	github.com/google/go-cmp v0.7.0
-	github.com/sascha-andres/reuse v0.16.0
+	go.livingit.de/reuse v0.18.0
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.292.0
 	gopkg.in/yaml.v2 v2.4.0

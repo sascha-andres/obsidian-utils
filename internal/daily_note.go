@@ -1,10 +1,8 @@
 package internal
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
-	"path"
 	"time"
 
 	obsidianutils "github.com/sascha-andres/obsidian-utils"
@@ -17,7 +15,7 @@ func FillDailyNote(logger *slog.Logger, dailyFolder, day string, values map[stri
 	if err != nil {
 		return false, false, err
 	}
-	notePath := path.Join(dailyFolder, fmt.Sprintf("%s.md", t.Format("2006/01/2006-01-02")))
+	notePath := DailyNotePath(dailyFolder, t)
 	found, err = Exists(notePath)
 	if err != nil || !found {
 		logger.Debug("daily note does not exist, skipping", "file", notePath)
